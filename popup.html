@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Advanced Search</title>
+  <script src="https://p.trellocdn.com/power-up.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 10px; }
+    input, button { margin: 5px; }
+    ul { list-style: none; padding: 0; }
+    li { margin: 5px 0; border: 1px solid #ccc; padding: 5px; }
+    .preset { cursor: pointer; color: blue; }
+  </style>
+</head>
+<body>
+  <input type="text" id="query" placeholder="Enter search query (e.g., label:red due:overdue)">
+  <button id="search">Search</button>
+  <button id="save">Save as Preset</button>
+  <h3>Saved Presets</h3>
+  <ul id="presets"></ul>
+  <h3>Results</h3>
+  <ul id="results"></ul>
+
+  <script>
+    var t = window.TrelloPowerUp.iframe();
+
+    // Load saved presets
+    t.get('board', 'private', 'presets', []).then(function(presets) {
+      var presetsList = document.getElementById('presets');
+      presets.forEach(function(preset, index) {
+        var li = document.createElement('li');
+        li.className = 'preset';
+        li.textContent = preset;
+        li.onclick = function() { runSearch(preset); };
+        var del = document.createElement('button');
+        del.textContent = 'Delete';
+        del.onclick = function(e) {
+          e.stopPropagation();
+          presets.splice(index, 1);
+          t.set('board', 'private', 'presets', presets).then(refreshPresets);
+        };
+        li.appendChild(del);
+        presetsList.appendChild(li);
+      });
+    });
+
+    function refreshPresets() {
+      location.reload(); // Simple refresh
+    }
+
+    // Search button
+    document.getElementById('search').onclick = function() {
+      var query = document.getElementById('query').value;
+      runSearch(query);
+    };
+
+    // Save preset
+    document.getElementById('save').onclick = function() {
+      var query = document.getElementById('query').value;
+      if (query) {
+        t.get('board', 'private', 'presets', []).then(function(presets) {
+          presets.push(query);
+          t.set('board', 'private', 'presets', presets).then(refreshPresets);
+        });
+      }
+    };
+
+    function runSearch(query) {
+      var resultsList = document.getElementById('results');
+      resultsList.innerHTML = 'Searching...';
+
+      // Use Trello REST API for search (cross-board by default)
+      t.rest('GET', '/search', {
+        query: query,
+        modelTypes: 'cards', // Focus on cards
+        partial: true, // Partial matches
+        cards_limit: 50 // Up to 50 results
+      }).then(function(response) {
+        resultsList.innerHTML = '';
+        if (response.cards && response.cards.length > 0) {
+          response.cards.forEach(function(card) {
+            var li = document.createElement('li');
+            var a = document.createElement('a');
+            a.href = card.url; // Link to card
+            a.textContent = card.name + ' (Board: ' + card.board.name + ')';
+            a.target = '_blank'; // Open in new tab
+            li.appendChild(a);
+            resultsList.appendChild(li);
+          });
+        } else {
+          resultsList.innerHTML = 'No results found.';
+        }
+      }).catch(function(error) {
+        resultsList.innerHTML = 'Error: ' + error.message;
+      });
+    }
+  </script>
+</body>
+</html>
