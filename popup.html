@@ -1,144 +1,120 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Advanced Search</title>
-  <script src="https://p.trellocdn.com/power-up.min.js"></script>
-  <style>
-    body{font-family:Arial,sans-serif;padding:10px}
-    input,button{margin:5px}
-    ul{list-style:none;padding:0}
-    li{margin:5px 0;border:1px solid #ccc;padding:5px}
-    .preset{cursor:pointer;color:#1e70bf}
-    .inline{display:inline-block;margin-left:8px}
-  </style>
-</head>
-<body>
-  <input type="text" id="query" placeholder="Enter search query (e.g., label:red due:overdue)" />
-  <button id="search">Search</button>
-  <button id="save">Save as Preset</button>
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"/><title>Advanced Search</title>
+<script src="https://p.trellocdn.com/power-up.min.js"></script>
+<style>
+:root{--t-blue:#0079bf;--t-blue-dark:#026aa7;--t-bg:#f4f5f7;--t-text:#172b4d;--t-muted:#6b778c;--t-card:#fff;--t-border:#dfe1e6}
+*{box-sizing:border-box}body{margin:0;background:var(--t-bg);font-family:Inter,Segoe UI,Arial,sans-serif;color:var(--t-text)}
+.container{max-width:720px;margin:16px auto;padding:12px}
+.toolbar{display:flex;gap:8px;align-items:center;margin-bottom:12px}
+input[type="text"]{flex:1;padding:10px 12px;border:1px solid var(--t-border);border-radius:8px;background:#fff;outline:none}
+input[type="text"]:focus{border-color:var(--t-blue);box-shadow:0 0 0 3px rgba(0,121,191,.15)}
+button{padding:10px 14px;border:0;border-radius:8px;background:var(--t-blue);color:#fff;font-weight:600;cursor:pointer}
+button:hover{background:var(--t-blue-dark)}button:disabled{opacity:.6;cursor:not-allowed}
+.section{margin-top:16px}
+.h3{margin:0 0 8px 0;color:#091e42;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.02em}
+.card{background:var(--t-card);border:1px solid var(--t-border);border-radius:10px;box-shadow:0 1px 0 rgba(9,30,66,.05)}
+.list{list-style:none;margin:0;padding:8px}
+.list li{display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:8px}
+.list li+li{margin-top:6px}
+.list a{color:var(--t-blue-dark);text-decoration:none;font-weight:600}
+.list a:hover{text-decoration:underline}
+.preset{cursor:pointer;color:var(--t-text);font-weight:500}
+.preset:hover{background:#f1f2f4}
+.btn-ghost{background:#fff;color:#172b4d;border:1px solid var(--t-border)}
+.btn-ghost:hover{background:#f7f8f9}
+.badge{display:inline-block;font-size:12px;color:var(--t-muted);margin-left:8px}
+.delete{margin-left:10px}
+.empty{color:var(--t-muted);padding:10px}
+.spinner{width:16px;height:16px;border:2px solid var(--t-border);border-top-color:var(--t-blue);border-radius:50%;animation:spin .8s linear infinite;margin-right:6px}
+.loading{display:flex;align-items:center;color:var(--t-muted);padding:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head><body>
+<div class="container">
+  <div class="toolbar">
+    <input id="query" type="text" placeholder="Try: label:red due:overdue OR @me is:open sort:created"/>
+    <button id="search">Search</button>
+    <button id="save" class="btn-ghost">Save Preset</button>
+  </div>
 
-  <h3>Saved Presets</h3>
-  <ul id="presets"></ul>
+  <div class="section">
+    <div class="h3">Saved Presets</div>
+    <div class="card"><ul id="presets" class="list"></ul></div>
+  </div>
 
-  <h3>Results</h3>
-  <ul id="results"></ul>
+  <div class="section">
+    <div class="h3">Results</div>
+    <div class="card"><ul id="results" class="list"></ul></div>
+  </div>
+</div>
 
 <script>
-  // Power-Up iframe
-  const t = window.TrelloPowerUp.iframe({
-    appKey: "72d09526a2855680e12a04e38b04637c",
-    appName: "Saved Filters",
-    appAuthor: "GPT AddIns",
+const t=window.TrelloPowerUp.iframe({appKey:"72d09526a2855680e12a04e38b04637c",appName:"Saved Filters",appAuthor:"GPT AddIns"});
+const API_KEY="72d09526a2855680e12a04e38b04637c";
+const INCLUDE_BOARD_NAMES=true;
+
+let restApi,USER_TOKEN,isSearching=false;
+const qEl=document.getElementById('query'),btnSearch=document.getElementById('search'),btnSave=document.getElementById('save'),presetsEl=document.getElementById('presets'),resultsEl=document.getElementById('results');
+
+async function ensureAuth(){
+  if(!restApi) restApi=await t.getRestApi();
+  if(!(await restApi.isAuthorized())) await restApi.authorize({scope:'read',expiration:'never'});
+  if(!USER_TOKEN && typeof restApi.getToken==='function') USER_TOKEN=await restApi.getToken();
+  if(!USER_TOKEN) throw new Error('Could not obtain Trello token.');
+}
+
+function setSearching(v){
+  isSearching=v;btnSearch.disabled=v;btnSave.disabled=v;qEl.disabled=v;
+}
+
+function showLoading(listEl){
+  listEl.innerHTML='';const li=document.createElement('li');li.className='loading';
+  const sp=document.createElement('span');sp.className='spinner';li.appendChild(sp);
+  li.appendChild(document.createTextNode('Searching…'));listEl.appendChild(li);
+}
+
+async function renderPresets(){
+  const presets=await t.get('board','private','presets',[]);
+  presetsEl.innerHTML='';
+  if(!presets.length){const li=document.createElement('li');li.className='empty';li.textContent='No presets saved yet.';presetsEl.appendChild(li);return;}
+  presets.forEach((preset,idx)=>{
+    const li=document.createElement('li');const left=document.createElement('div');left.className='preset';left.textContent=preset;left.onclick=()=>runSearch(preset);
+    const right=document.createElement('div');
+    const del=document.createElement('button');del.className='btn-ghost delete';del.textContent='Delete';
+    del.onclick=async(e)=>{e.stopPropagation();const all=await t.get('board','private','presets',[]);all.splice(idx,1);await t.set('board','private','presets',all);renderPresets();};
+    right.appendChild(del);li.appendChild(left);li.appendChild(right);presetsEl.appendChild(li);
   });
+}
 
-  // Your public API key (safe to expose)
-  const API_KEY = "72d09526a2855680e12a04e38b04637c";
-  const INCLUDE_BOARD_NAMES = true;
-
-  // Get Trello REST token once (per user)
-  let restApi, USER_TOKEN;
-  async function ensureAuth() {
-    if (!restApi) restApi = await t.getRestApi();
-    if (!(await restApi.isAuthorized())) {
-      await restApi.authorize({ scope: 'read', expiration: 'never' });
-    }
-    if (!USER_TOKEN && typeof restApi.getToken === 'function') {
-      USER_TOKEN = await restApi.getToken();
-    }
-    if (!USER_TOKEN) {
-      throw new Error('Could not obtain Trello token (getToken not available).');
-    }
-  }
-
-  // Presets UI
-  async function renderPresets() {
-    const presets = await t.get('board','private','presets',[]);
-    const ul = document.getElementById('presets');
-    ul.innerHTML = '';
-    presets.forEach((preset, index) => {
-      const li = document.createElement('li');
-      li.className = 'preset';
-      li.textContent = preset;
-      li.onclick = () => runSearch(preset);
-
-      const del = document.createElement('button');
-      del.className = 'inline';
-      del.textContent = 'Delete';
-      del.onclick = async (e) => {
-        e.stopPropagation();
-        presets.splice(index,1);
-        await t.set('board','private','presets',presets);
-        renderPresets();
-      };
-
-      li.appendChild(del);
-      ul.appendChild(li);
+async function runSearch(query){
+  setSearching(true);showLoading(resultsEl);
+  try{
+    await ensureAuth();
+    const params=new URLSearchParams({query:query||'',modelTypes:'cards',partial:'true',cards_limit:'50',...(INCLUDE_BOARD_NAMES?{cards_board:'true'}:{}),key:API_KEY,token:USER_TOKEN});
+    const res=await fetch(`https://api.trello.com/1/search?${params.toString()}`);
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data=await res.json();
+    resultsEl.innerHTML='';
+    const cards=data.cards||[];
+    if(!cards.length){const li=document.createElement('li');li.className='empty';li.textContent='No results found.';resultsEl.appendChild(li);return;}
+    cards.forEach(card=>{
+      const li=document.createElement('li');
+      const a=document.createElement('a');a.href=card.url;a.target='_blank';a.textContent=card.name;
+      const meta=document.createElement('span');meta.className='badge';meta.textContent=INCLUDE_BOARD_NAMES?`• ${card.board?.name||card.idBoard||'Board'}`:'';
+      li.appendChild(a);li.appendChild(meta);resultsEl.appendChild(li);
     });
-  }
-  renderPresets();
+  }catch(err){
+    console.error(err);resultsEl.innerHTML='';const li=document.createElement('li');li.className='empty';li.textContent=`Error: ${err.message}`;resultsEl.appendChild(li);
+  }finally{setSearching(false);}
+}
 
-  document.getElementById('search').onclick = () => {
-    const q = document.getElementById('query').value.trim();
-    runSearch(q);
-  };
+document.getElementById('search').onclick=()=>runSearch(qEl.value.trim());
+document.getElementById('save').onclick=async()=>{
+  const q=qEl.value.trim();if(!q||isSearching) return;
+  const presets=await t.get('board','private','presets',[]);if(!presets.includes(q)){presets.push(q);await t.set('board','private','presets',presets);renderPresets();}
+};
+qEl.addEventListener('keydown',e=>{if(e.key==='Enter'&&!isSearching) runSearch(qEl.value.trim());});
 
-  document.getElementById('save').onclick = async () => {
-    const q = document.getElementById('query').value.trim();
-    if (!q) return;
-    const presets = await t.get('board','private','presets',[]);
-    if (!presets.includes(q)) {
-      presets.push(q);
-      await t.set('board','private','presets',presets);
-      renderPresets();
-    }
-  };
-
-  // Search via direct fetch to Trello API (CORS allowed if your origin is whitelisted)
-  async function runSearch(query) {
-    const results = document.getElementById('results');
-    results.innerHTML = '<li>Searching…</li>';
-
-    try {
-      await ensureAuth();
-
-      const params = new URLSearchParams({
-        query: query || '',
-        modelTypes: 'cards',
-        partial: 'true',
-        cards_limit: '50',
-        ...(INCLUDE_BOARD_NAMES ? { cards_board: 'true' } : {}),
-        key: API_KEY,
-        token: USER_TOKEN
-      });
-
-      const res = await fetch(`https://api.trello.com/1/search?${params.toString()}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-
-      results.innerHTML = '';
-      const cards = data.cards || [];
-      if (!cards.length) {
-        results.innerHTML = '<li>No results found.</li>';
-        return;
-      }
-
-      cards.forEach(card => {
-        const li = document.createElement('li');
-        const a = document.createElement('a');
-        a.href = card.url;
-        a.target = '_blank';
-        a.textContent = INCLUDE_BOARD_NAMES
-          ? `${card.name} (Board: ${card.board?.name || card.idBoard || '?'})`
-          : card.name;
-        li.appendChild(a);
-        results.appendChild(li);
-      });
-    } catch (err) {
-      console.error(err);
-      results.innerHTML = `<li>Error: ${err.message}</li>`;
-    }
-  }
+renderPresets();
 </script>
-</body>
-</html>
+</body></html>
