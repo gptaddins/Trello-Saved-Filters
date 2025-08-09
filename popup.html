@@ -23,7 +23,7 @@
 
   <script>
     var t = window.TrelloPowerUp.iframe();
-
+    console.log(t, 't')
     // Load saved presets
     t.get('board', 'private', 'presets', []).then(function(presets) {
       var presetsList = document.getElementById('presets');
