@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Advanced Search</title>
   <script src="https://p.trellocdn.com/power-up.min.js"></script>
   <style>
@@ -10,90 +10,120 @@
     ul { list-style: none; padding: 0; }
     li { margin: 5px 0; border: 1px solid #ccc; padding: 5px; }
     .preset { cursor: pointer; color: blue; }
+    .inline { display:inline-block; margin-left:8px; }
   </style>
 </head>
 <body>
-  <input type="text" id="query" placeholder="Enter search query (e.g., label:red due:overdue)">
+  <input type="text" id="query" placeholder="Enter search query (e.g., label:red due:overdue)" />
   <button id="search">Search</button>
   <button id="save">Save as Preset</button>
+
   <h3>Saved Presets</h3>
   <ul id="presets"></ul>
+
   <h3>Results</h3>
   <ul id="results"></ul>
 
-  <script>
-    var t = window.TrelloPowerUp.iframe();
-    console.log(t, 't')
-    // Load saved presets
-    t.get('board', 'private', 'presets', []).then(function(presets) {
-      var presetsList = document.getElementById('presets');
-      presets.forEach(function(preset, index) {
-        var li = document.createElement('li');
-        li.className = 'preset';
-        li.textContent = preset;
-        li.onclick = function() { runSearch(preset); };
-        var del = document.createElement('button');
-        del.textContent = 'Delete';
-        del.onclick = function(e) {
-          e.stopPropagation();
-          presets.splice(index, 1);
-          t.set('board', 'private', 'presets', presets).then(refreshPresets);
-        };
-        li.appendChild(del);
-        presetsList.appendChild(li);
-      });
+<script>
+  const t = window.TrelloPowerUp.iframe();
+
+  // --- REST helper (authorize once, then reuse) ---
+  let restApi;
+  async function getApi() {
+    if (restApi) return restApi;
+    restApi = await t.getRestApi();
+    if (!(await restApi.isAuthorized())) {
+      // Ask for read access (shows Trello’s auth prompt once)
+      await restApi.authorize({ scope: 'read', expiration: 'never' });
+    }
+    return restApi;
+  }
+
+  // --- Presets render ---
+  async function renderPresets() {
+    const presets = await t.get('board', 'private', 'presets', []);
+    const ul = document.getElementById('presets');
+    ul.innerHTML = '';
+    presets.forEach((preset, index) => {
+      const li = document.createElement('li');
+      li.className = 'preset';
+      li.textContent = preset;
+      li.onclick = () => runSearch(preset);
+
+      const del = document.createElement('button');
+      del.className = 'inline';
+      del.textContent = 'Delete';
+      del.onclick = async (e) => {
+        e.stopPropagation();
+        presets.splice(index, 1);
+        await t.set('board', 'private', 'presets', presets);
+        renderPresets();
+      };
+
+      li.appendChild(del);
+      ul.appendChild(li);
     });
+  }
+  renderPresets();
 
-    function refreshPresets() {
-      location.reload(); // Simple refresh
+  // --- UI handlers ---
+  document.getElementById('search').onclick = () => {
+    const q = document.getElementById('query').value.trim();
+    runSearch(q);
+  };
+
+  document.getElementById('save').onclick = async () => {
+    const q = document.getElementById('query').value.trim();
+    if (!q) return;
+    const presets = await t.get('board', 'private', 'presets', []);
+    if (!presets.includes(q)) {
+      presets.push(q);
+      await t.set('board', 'private', 'presets', presets);
+      renderPresets();
     }
+  };
 
-    // Search button
-    document.getElementById('search').onclick = function() {
-      var query = document.getElementById('query').value;
-      runSearch(query);
-    };
+  // --- Search ---
+  async function runSearch(query) {
+    const resultsList = document.getElementById('results');
+    resultsList.innerHTML = '<li>Searching…</li>';
+    try {
+      const api = await getApi();
 
-    // Save preset
-    document.getElementById('save').onclick = function() {
-      var query = document.getElementById('query').value;
-      if (query) {
-        t.get('board', 'private', 'presets', []).then(function(presets) {
-          presets.push(query);
-          t.set('board', 'private', 'presets', presets).then(refreshPresets);
-        });
-      }
-    };
-
-    function runSearch(query) {
-      var resultsList = document.getElementById('results');
-      resultsList.innerHTML = 'Searching...';
-
-      // Use Trello REST API for search (cross-board by default)
-      t.rest('GET', '/search', {
-        query: query,
-        modelTypes: 'cards', // Focus on cards
-        partial: true, // Partial matches
-        cards_limit: 50 // Up to 50 results
-      }).then(function(response) {
-        resultsList.innerHTML = '';
-        if (response.cards && response.cards.length > 0) {
-          response.cards.forEach(function(card) {
-            var li = document.createElement('li');
-            var a = document.createElement('a');
-            a.href = card.url; // Link to card
-            a.textContent = card.name + ' (Board: ' + card.board.name + ')';
-            a.target = '_blank'; // Open in new tab
-            li.appendChild(a);
-            resultsList.appendChild(li);
-          });
-        } else {
-          resultsList.innerHTML = 'No results found.';
-        }
-      }).catch(function(error) {
-        resultsList.innerHTML = 'Error: ' + error.message;
+      // Build URL (search across all boards user can see)
+      const params = new URLSearchParams({
+        query: query || '',
+        modelTypes: 'cards',
+        partial: 'true',
+        cards_limit: '50'
+        // Tip: to include board data on each card, add: cards_board: 'true'
       });
+
+      const res = await api.trelloFetch(`/1/search?${params.toString()}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
+      resultsList.innerHTML = '';
+      const cards = data.cards || [];
+      if (!cards.length) {
+        resultsList.innerHTML = '<li>No results found.</li>';
+        return;
+      }
+
+      cards.forEach(card => {
+        const li = document.createElement('li');
+        const a = document.createElement('a');
+        a.href = card.url;
+        a.textContent = card.name; // kept simple to avoid missing board fields
+        a.target = '_blank';
+        li.appendChild(a);
+        resultsList.appendChild(li);
+      });
+    } catch (err) {
+      resultsList.innerHTML = `<li>Error: ${err.message}</li>`;
+      console.error(err);
     }
-  </script>
+  }
+</script>
 </body>
 </html>
