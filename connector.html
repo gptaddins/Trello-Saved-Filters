@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Saved Filters | GPT AddIn</title>
+  <script src="https://p.trellocdn.com/power-up.min.js"></script>
+</head>
+<body>
+  <script>
+    window.TrelloPowerUp.initialize({
+      'board-buttons': function(t, options) {
+        return [{
+          icon: 'https://avatars.githubusercontent.com/u/224228586',
+          text: 'Saved Filters',
+          callback: function(t) {
+            t.popup({
+              title: 'Advanced Search & Filters',
+              url: './popup.html',
+              height: 400
+            });
+          }
+        }];
+      }
+    });
+  </script>
+</body>
+</html>
