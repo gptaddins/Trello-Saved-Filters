@@ -8,7 +8,7 @@
     body { margin: 0; padding: 10px; font-family: Arial, sans-serif; }
     input, select { width: 100%; padding: 5px; margin-bottom: 10px; }
     #save-filter { margin-top: 10px; }
-    #presets, #results { list-style: none; padding: 0; }
+    #presets { list-style: none; padding: 0; }
     li { margin: 5px 0; padding: 5px; border: 1px solid #ccc; }
     .preset { cursor: pointer; color: blue; }
     button { margin-left: 5px; }
@@ -29,8 +29,6 @@
   </div>
   <h3>Saved Filters</h3>
   <ul id="presets"></ul>
-  <h3>Filtered Cards</h3>
-  <ul id="results"></ul>
 
   <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -51,8 +49,6 @@
               option.textContent = list.name;
               statusSelect.appendChild(option);
             });
-          } else {
-            console.error('Status filter select not found');
           }
         }).catch(function(error) {
           console.error('Error fetching lists:', error);
@@ -77,12 +73,9 @@
                   option.textContent = member.fullName || member.username;
                   assigneeSelect.appendChild(option);
                 });
-              } else {
-                console.error('Assignee filter select not found');
               }
             }).catch(function(error) {
               console.error('Error fetching members:', error);
-              // Fallback to current user
               t.get('member', 'id').then(function(memberId) {
                 var assigneeSelect = document.getElementById('assignee-filter');
                 if (assigneeSelect) {
@@ -125,8 +118,6 @@
           var filter = getCurrentFilter();
           applyFilter(filter);
         });
-      } else {
-        console.error('Apply button not found');
       }
 
       // Save filter button
@@ -145,8 +136,6 @@
             });
           }
         });
-      } else {
-        console.error('Save button not found');
       }
 
       function getCurrentFilter() {
@@ -158,34 +147,12 @@
       }
 
       function applyFilter(filter) {
-        var resultsList = document.getElementById('results');
-        if (resultsList) {
-          resultsList.innerHTML = 'Filtering...';
-          t.cards('all').then(function(cards) {
-            resultsList.innerHTML = '';
-            var filteredCards = cards.filter(card => matchesFilter(card, filter));
-            if (filteredCards.length > 0) {
-              filteredCards.forEach(function(card) {
-                var li = document.createElement('li');
-                var a = document.createElement('a');
-                a.href = card.url;
-                a.textContent = card.name + ' (List: ' + (card.idListName || 'Unknown List') + ')';
-                a.target = '_blank';
-                li.appendChild(a);
-                resultsList.appendChild(li);
-              });
-            } else {
-              resultsList.innerHTML = 'No cards match the filter.';
-            }
-            t.set('board', 'private', 'activeFilter', filter).then(function() {
-              t.render();
-            }).catch(function(error) {
-              console.error('Error applying filter:', error);
-            });
-          }).catch(function(error) {
-            resultsList.innerHTML = 'Error: ' + error.message;
-          });
-        }
+        t.set('board', 'private', 'activeFilter', filter).then(function() {
+          t.render(); // Refresh badges to reflect the filter
+          t.closePopup();
+        }).catch(function(error) {
+          console.error('Error applying filter:', error);
+        });
       }
 
       function refreshPresets() {
