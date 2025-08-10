@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Saved Filters | Board Bar</title>
+  <script src="https://p.trellocdn.com/power-up.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: Inter, Arial, sans-serif;
+      background: #f4f5f7;
+      padding: 12px;
+    }
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid #dfe1e6;
+    }
+    button {
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: none;
+      background: #0079bf;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #026aa7;
+    }
+    .preset-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .preset-list li {
+      padding: 6px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    .preset-list li:hover {
+      background: #ebecf0;
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <input id="query" type="text" placeholder="Example: label:red due:overdue OR @me">
+    <button id="searchBtn">Apply</button>
+    <button id="saveBtn">Save</button>
+  </div>
+
+  <h4>Saved Presets</h4>
+  <ul id="presets" class="preset-list"></ul>
+
+  <script>
+    const t = window.TrelloPowerUp.iframe();
+    const queryEl = document.getElementById('query');
+    const presetsEl = document.getElementById('presets');
+
+    async function renderPresets() {
+      const presets = await t.get('board', 'private', 'presets', []);
+      presetsEl.innerHTML = '';
+      if (!presets.length) {
+        const li = document.createElement('li');
+        li.textContent = 'No presets saved yet.';
+        li.style.color = '#6b778c';
+        presetsEl.appendChild(li);
+        return;
+      }
+      presets.forEach(preset => {
+        const li = document.createElement('li');
+        li.textContent = preset;
+        li.onclick = () => applyFilter(preset);
+        presetsEl.appendChild(li);
+      });
+    }
+
+    function applyFilter(query) {
+      // Close the board bar and open Trello's native search
+      t.closeBoardBar();
+      window.open(`https://trello.com/search?q=${encodeURIComponent(query)}`, '_self');
+    }
+
+    document.getElementById('searchBtn').onclick = () => {
+      const q = queryEl.value.trim();
+      if (q) applyFilter(q);
+    };
+
+    document.getElementById('saveBtn').onclick = async () => {
+      const q = queryEl.value.trim();
+      if (!q) return;
+      const presets = await t.get('board', 'private', 'presets', []);
+      if (!presets.includes(q)) {
+        presets.push(q);
+        await t.set('board', 'private', 'presets', presets);
+        renderPresets();
+      }
+    };
+
+    renderPresets();
+  </script>
+</body>
+</html>
