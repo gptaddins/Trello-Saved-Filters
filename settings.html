@@ -23,7 +23,11 @@
   <ul id="results"></ul>
 
   <script>
-    var t = window.TrelloPowerUp.iframe();
+    var t = window.TrelloPowerUp.iframe({
+      appKey: '72d09526a2855680e12a04e38b04637c',
+      appName: 'Saved Filters',
+      appAuthor: 'GPT AddIns'
+    });
 
     // Load initial query from args or storage
     var initialQuery = t.arg('query') || '';
@@ -33,33 +37,4 @@
     t.get('board', 'private', 'presets', []).then(function(presets) {
       var presetsList = document.getElementById('presets');
       presets.forEach(function(preset, index) {
-        var li = document.createElement('li');
-        li.className = 'preset';
-        li.textContent = preset;
-        li.onclick = function() {
-          document.getElementById('search-bar').value = preset;
-          runSearch(preset);
-        };
-        var del = document.createElement('button');
-        del.textContent = 'Delete';
-        del.onclick = function(e) {
-          e.stopPropagation();
-          presets.splice(index, 1);
-          t.set('board', 'private', 'presets', presets).then(refreshPresets);
-        };
-        li.appendChild(del);
-        presetsList.appendChild(li);
-      });
-    });
-
-    function refreshPresets() {
-      t.closePopup().then(function() {
-        t.showSettings({ url: './settings.html' });
-      });
-    }
-
-    // Apply and save actions
-    document.getElementById('search-bar').onkeyup = function(e) {
-      if (e.key === 'Enter') runSearch(this.value);
-    };
-    document.getElementById('apply').onclick = function()
+        var li = document.createElement
