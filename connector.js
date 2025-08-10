@@ -28,21 +28,23 @@ window.TrelloPowerUp.initialize({
       });
   },
   'card-badges': function(t, options) {
-    console.log({options:options})
-    if (!options || !options.card || !options.card.id) {
-      console.log('Skipping badge evaluation: undefined card');
-      return [];
-    }
-    return t.get('board', 'private', 'savedFilters')
-      .then(function(data) {
-        console.log('Badge data for card', options.card.id, ':', data);
-        if (data && data.activeFilter && data.filteredCardIds.includes(options.card.id)) {
-          console.log('Applying Filtered badge to card', options.card.id);
-          return [{ text: 'Filtered', color: 'blue' }];
-        } else {
-          console.log('No Filtered badge for card', options.card.id);
+    return t.card('id')
+      .then(card => {
+        if (!card || !card.id) {
+          console.log('Skipping badge evaluation: no card id');
           return [];
         }
+        return t.get('board', 'private', 'savedFilters')
+          .then(data => {
+            console.log('Badge data for card', card.id, ':', data);
+            if (data && data.activeFilter && data.filteredCardIds && data.filteredCardIds.includes(card.id)) {
+              console.log('Applying Filtered badge to card', card.id);
+              return [{ text: 'Filtered', color: 'blue' }];
+            } else {
+              console.log('No Filtered badge for card', card.id);
+              return [];
+            }
+          });
       })
       .catch((err) => {
         console.error('Error in card-badges:', err);
