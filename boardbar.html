@@ -16,7 +16,7 @@
   button { padding: 8px 12px; border-radius: 6px; border: none; cursor: pointer; }
   #searchBtn { background: #0079bf; color: white; }
   #searchBtn:hover { background: #026aa7; }
-  #saveBtn { background: #f4f5f7; border: 1px solid #dfe1e6; }
+  #saveBtn, #clearBtn { background: #f4f5f7; border: 1px solid #dfe1e6; }
   ul { list-style: none; padding: 0; margin: 0; }
   li { padding: 6px; cursor: pointer; border-radius: 4px; }
   li:hover { background: #ebecf0; }
@@ -34,7 +34,7 @@
   <ul id="presets"></ul>
 
 <script>
-const t = window.TrelloPowerUp.iframe({appKey:"72d09526a2855680e12a04e38b04637c",appName:"Saved Filters",appAuthor:"GPT AddIns"});
+const t = window.TrelloPowerUp.iframe({appKey:"72d09526a2855680e12a04e38b04637c", appName:"Saved Filters", appAuthor:"GPT AddIns"});
 const API_KEY = "72d09526a2855680e12a04e38b04637c";
 let USER_TOKEN;
 
@@ -60,7 +60,7 @@ async function runSearch(query) {
   const res = await fetch(`https://api.trello.com/1/search?${params.toString()}`);
   const data = await res.json();
   const ids = (data.cards || []).map(c => c.id);
-  t.set('board', 'private', 'filteredCardIds', ids);
+  await t.set('board', 'private', 'filteredCardIds', ids);
   t.closeBoardBar();
   t.alert({ message: `Filtered to ${ids.length} cards` });
 }
