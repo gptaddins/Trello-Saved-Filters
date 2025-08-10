@@ -12,7 +12,7 @@ t.render(async () => {
   const assigneeSelect = document.getElementById('filter-assignee');
   assigneeSelect.innerHTML = '<option value="">Any</option>' + members.map(member => `<option value="${member.id}">${member.fullName}</option>`).join('');
 
-  const data = await t.get('board', 'private', 'savedFilters', { presets: [], filteredCardIds: [], activeFilter: null });
+  const data = await t.get('board', 'private', 'savedFilters', { presets: [], filteredCardIds: [], archivedByFilter: [], activeFilter: null });
   updatePresetsList(data.presets);
 
   if (data.activeFilter) {
@@ -22,38 +22,31 @@ t.render(async () => {
   }
 
   // Add event listeners here, after DOM is ready
-  document.getElementById('apply-filter').addEventListener('click', () => {
+  document.getElementById('apply-filter').addEventListener('click', async () => {
     const activeFilter = {
       text: document.getElementById('filter-text').value,
       status: document.getElementById('filter-status').value,
       assignee: document.getElementById('filter-assignee').value
     };
-    computeFilteredCardIds(t, activeFilter).then(filteredCardIds => {
-      t.get('board', 'private', 'savedFilters').then(data => {
-        data = data || { presets: [] };
-        data.activeFilter = activeFilter;
-        data.filteredCardIds = filteredCardIds;
-        t.set('board', 'private', 'savedFilters', data).then(() => {
-          applyFilter(t, filteredCardIds);
-          t.closePopup();
-        });
-      });
-    });
+    const filteredCardIds = await computeFilteredCardIds(t, activeFilter);
+    let data = await t.get('board', 'private', 'savedFilters', { presets: [], filteredCardIds: [], archivedByFilter: [], activeFilter: null });
+    data.activeFilter = activeFilter;
+    data.filteredCardIds = filteredCardIds;
+    data.archivedByFilter = await applyFilter(t, filteredCardIds, data.archivedByFilter || []);
+    await t.set('board', 'private', 'savedFilters', data);
+    t.closePopup();
   });
 
-  document.getElementById('clear-filter').addEventListener('click', () => {
-    t.get('board', 'private', 'savedFilters').then(data => {
-      data = data || { presets: [] };
-      data.activeFilter = null;
-      data.filteredCardIds = [];
-      t.set('board', 'private', 'savedFilters', data).then(() => {
-        t.cards('id').then(cards => {
-          const allIds = cards.map(c => c.id);
-          applyFilter(t, allIds);
-          t.closePopup();
-        });
-      });
-    });
+  document.getElementById('clear-filter').addEventListener('click', async () => {
+    let data = await t.get('board', 'private', 'savedFilters', { presets: [], filteredCardIds: [], archivedByFilter: [], activeFilter: null });
+    if (data.archivedByFilter && data.archivedByFilter.length > 0) {
+      await unarchiveCards(t, data.archivedByFilter);
+    }
+    data.activeFilter = null;
+    data.filteredCardIds = [];
+    data.archivedByFilter = [];
+    await t.set('board', 'private', 'savedFilters', data);
+    t.closePopup();
   });
 
   document.getElementById('save-preset').addEventListener('click', () => {
@@ -147,15 +140,51 @@ async function computeFilteredCardIds(t, filter) {
   }
 }
 
-function applyFilter(t, filteredCardIds) {
-  t.cards('id').then(cards => {
-    const filteredSet = new Set(filteredCardIds);
-    cards.forEach(card => {
-      if (filteredSet.has(card.id)) {
-        t.showCard(card.id);
-      } else {
-        t.hideCard(card.id);
-      }
-    });
+async function applyFilter(t, filteredCardIds, previousArchived) {
+  // Unarchive previously archived cards
+  if (previousArchived.length > 0) {
+    await unarchiveCards(t, previousArchived);
+  }
+
+  // Get all current open cards
+  const cards = await t.cards('id');
+  const allIds = cards.map(c => c.id);
+
+  // Compute non-matching IDs to archive
+  const nonFilteredIds = allIds.filter(id => !filteredCardIds.includes(id));
+
+  // Archive non-matching
+  await archiveCards(t, nonFilteredIds);
+
+  return nonFilteredIds;
+}
+
+async function archiveCards(t, cardIds) {
+  const client = await t.getRestApi();
+  let token = await client.getToken();
+  if (!token) {
+    await client.authorize();
+    token = await client.getToken();
+  }
+
+  const promises = cardIds.map(id => {
+    const url = `https://api.trello.com/1/cards/${id}?closed=true&key=${appKey}&token=${token}`;
+    return fetch(url, { method: 'PUT' }).catch(err => console.error(`Failed to archive card ${id}:`, err));
   });
+  await Promise.all(promises);
+}
+
+async function unarchiveCards(t, cardIds) {
+  const client = await t.getRestApi();
+  let token = await client.getToken();
+  if (!token) {
+    await client.authorize();
+    token = await client.getToken();
+  }
+
+  const promises = cardIds.map(id => {
+    const url = `https://api.trello.com/1/cards/${id}?closed=false&key=${appKey}&token=${token}`;
+    return fetch(url, { method: 'PUT' }).catch(err => console.error(`Failed to unarchive card ${id}:`, err));
+  });
+  await Promise.all(promises);
 }
