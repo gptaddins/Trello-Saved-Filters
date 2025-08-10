@@ -22,6 +22,8 @@
   </select>
   <select id="assignee-filter">
     <option value="">Any Assignee</option>
+    <!-- Placeholder for assignee; will use current user for now -->
+    <option value="current">Assigned to Me</option>
   </select>
   <button id="apply">Apply Filter</button>
   <div>
@@ -40,15 +42,15 @@
       appAuthor: 'GPT AddIns'
     });
 
-    // Load members for the assignee select
-    t.members('all').then(function(members) {
+    // Get current member ID as a workaround (simplified)
+    t.get('member', 'id').then(function(memberId) {
       var assigneeSelect = document.getElementById('assignee-filter');
-      members.forEach(function(member) {
+      if (memberId) {
         var option = document.createElement('option');
-        option.value = member.id;
-        option.textContent = member.fullName || member.username;
+        option.value = memberId;
+        option.textContent = 'Me';
         assigneeSelect.appendChild(option);
-      });
+      }
     });
 
     // Load saved filters
@@ -91,7 +93,7 @@
       return {
         text: document.getElementById('search-text').value,
         status: document.getElementById('status-filter').value,
-        assignee: document.getElementById('assignee-filter').value
+        assignee: document.getElementById('assignee-filter').value === 'current' ? t.get('member', 'id') : document.getElementById('assignee-filter').value
       };
     }
 
