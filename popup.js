@@ -1,8 +1,7 @@
-const t = window.TrelloPowerUp.iframe({
-      appKey: '72d09526a2855680e12a04e38b04637c',
-      appName: 'Saved Filters',
-      appAuthor: 'GPT AddIns'
-    });
+const appKey = "72d09526a2855680e12a04e38b04637c";
+const appName = "Saved Filters";
+const t = window.TrelloPowerUp.iframe({ appKey, appName });
+
 t.render(async () => {
   const lists = await t.lists('id', 'name');
   const statusSelect = document.getElementById('filter-status');
@@ -123,15 +122,29 @@ async function computeFilteredCardIds(t, filter) {
   const query = queryParts.join(' ');
 
   const board = await t.board('id');
-  const response = await t.restApi().get('/search', {
-    query,
-    idBoards: board.id,
-    modelTypes: 'cards',
-    card_fields: 'id',
-    partial: true
-  });
-  console.log('Search API called with query:', query, 'Response:', response);
-  return response.cards ? response.cards.map(card => card.id) : [];
+  const client = await t.getRestApi();
+  let token = await client.getToken();
+  if (!token) {
+    try {
+      await client.authorize();
+      token = await client.getToken();
+    } catch (err) {
+      console.error('Authorization failed:', err);
+      return [];
+    }
+  }
+
+  const url = `https://api.trello.com/1/search?key=${appKey}&token=${token}&query=${encodeURIComponent(query)}&idBoards=${board.id}&modelTypes=cards&card_fields=id&partial=true`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    const response = await res.json();
+    console.log('Search API called with query:', query, 'Response:', response);
+    return response.cards ? response.cards.map(card => card.id) : [];
+  } catch (err) {
+    console.error('Search API fetch failed:', err);
+    return [];
+  }
 }
 
 function applyFilter(t, filteredCardIds) {
