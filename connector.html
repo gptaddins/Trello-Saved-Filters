@@ -1,75 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>Saved Filters Power-Up</title>
   <script src="https://p.trellocdn.com/power-up.min.js"></script>
+  <script src="./connector.js"></script>
 </head>
-<body>
-  <script>
-    window.TrelloPowerUp.initialize({
-      'board-buttons': function(t, options) {
-        return [{
-          icon: 'https://avatars.githubusercontent.com/u/224228586', // Your app icon
-          text: 'Filters',
-          callback: function(t) {
-            return t.popup({
-              title: 'Custom Filters',
-              url: './popup.html',
-              height: 500
-            });
-          }
-        }];
-      },
-      'card-badges': function(t, options) {
-        return t.card('all').then(function(card) {
-          var filter = t.get('board', 'private', 'activeFilter', {});
-          if (Object.keys(filter).length > 0) {
-            var matches = matchesFilter(card, filter);
-            return matches ? [{
-              text: '✓ Filtered', // Clearer feedback
-              color: 'green'
-            }] : [{
-              text: '✗ Not Filtered', // Clearer feedback
-              color: 'gray'
-            }];
-          }
-          return [];
-        });
-      },
-      'card-buttons': function(t, options) {
-        return [{
-          icon: 'https://cdn-icons-png.flaticon.com/512/32/32223.png', // Filter icon
-          text: 'Reapply Filter',
-          callback: function(t) {
-            return t.board('id').then(function(boardId) {
-              var filter = t.get('board', 'private', 'activeFilter', {});
-              if (Object.keys(filter).length > 0) {
-                t.set('board', 'private', 'activeFilter', filter).then(function() {
-                  t.render(function() {
-                    return t.card('all').then(function() {
-                      return [];
-                    });
-                  });
-                });
-              }
-              return t.closePopup();
-            });
-          }
-        }];
-      }
-    }, {
-      appKey: '72d09526a2855680e12a04e38b04637c',
-      appName: 'Saved Filters',
-      appAuthor: 'GPT AddIns'
-    });
-
-    function matchesFilter(card, filter) {
-      var textMatch = !filter.text || (card.name && card.name.toLowerCase().includes(filter.text.toLowerCase()));
-      var statusMatch = !filter.status || (card.idList && filter.status === card.idList);
-      var assigneeMatch = !filter.assignee || (card.idMembers && card.idMembers.includes(filter.assignee));
-      return textMatch && statusMatch && assigneeMatch;
-    }
-  </script>
-</body>
+<body></body>
 </html>
