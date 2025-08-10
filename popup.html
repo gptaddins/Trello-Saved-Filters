@@ -153,11 +153,9 @@
       function applyFilter(filter) {
         t.set('board', 'private', 'activeFilter', filter).then(function() {
           t.render(function() {
-            return t.card('all').then(function() {
-              return [];
-            });
+            // No need for t.card() here; badges are handled by connector.html
+            return Promise.resolve([]);
           });
-          // Removed t.closePopup() to keep popup open
         }).catch(function(error) {
           console.error('Error applying filter:', error);
         });
