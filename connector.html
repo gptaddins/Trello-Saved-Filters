@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>GPT Saved Filters Power-Up</title>
+  <title>Saved Filters Power-Up</title>
   <script src="https://p.trellocdn.com/power-up.min.js"></script>
 </head>
 <body>
@@ -10,15 +10,18 @@
   window.TrelloPowerUp.initialize({
     'board-buttons': function(t) {
       return [{
-        icon: 'https://avatars.githubusercontent.com/u/224228586', // Your icon
+        icon: 'https://avatars.githubusercontent.com/u/224228586',
         text: 'Saved Filters',
         callback: function(t) {
           return t.boardBar({
-            url: './boardbar.html', // This will be the UI that drops down on the board
+            url: './boardbar.html',
             height: 220
           });
         }
       }];
+    },
+    'board': function(t) {
+      // Board capability to inject filtering script
     }
   });
 </script>
