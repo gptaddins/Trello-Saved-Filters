@@ -8,17 +8,14 @@
 <body>
   <script>
     window.TrelloPowerUp.initialize({
-      'board-bar': function(t, options) {
+      'board-buttons': function(t, options) {
         return [{
-          title: 'Filters',
-          icon: 'https://your-hosted-icon.png', // Replace with search icon URL
-          condition: 'always',
+          icon: 'https://avatars.githubusercontent.com/u/224228586', // Your app icon
+          text: 'Filters',
           callback: function(t) {
-            return t.sizeTo('#filters-panel').then(function() {
-              return {
-                url: './board.html',
-                height: '100%'
-              };
+            return t.showSettings({
+              url: './settings.html',
+              height: 600 // Adjust based on content
             });
           }
         }];
@@ -28,7 +25,7 @@
           var query = t.get('board', 'private', 'activeQuery', '');
           if (query) {
             return t.getRestApi().getToken().then(function(token) {
-              var appKey = t.arg('appKey') || 'your-app-key-here';
+              var appKey = '72d09526a2855680e12a04e38b04637c';
               var url = 'https://api.trello.com/1/search?query=' + encodeURIComponent(query) +
                         '&modelTypes=cards&cards_limit=100&key=' + appKey + '&token=' + token;
               return fetch(url).then(function(response) {
@@ -46,10 +43,20 @@
           }
           return [];
         });
+      },
+      'show-settings': function(t, options) {
+        return t.get('board', 'private', 'activeQuery', '').then(function(query) {
+          return {
+            url: './settings.html',
+            args: { query: query },
+            height: 600
+          };
+        });
       }
     }, {
-      appKey: '72d09526a2855680e12a04e38b04637c', // Replace with your API key
-      appName: 'Saved Filters'
+      appKey: '72d09526a2855680e12a04e38b04637c',
+      appName: 'Saved Filters',
+      appAuthor: 'GPT AddIns'
     });
   </script>
 </body>
