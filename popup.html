@@ -2,11 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Advanced Search</title>
+  <title>Custom Filters</title>
   <script src="https://p.trellocdn.com/power-up.min.js"></script>
   <style>
     body { margin: 0; padding: 10px; font-family: Arial, sans-serif; }
-    #search-bar { width: 100%; padding: 5px; margin-bottom: 10px; }
+    input, select { width: 100%; padding: 5px; margin-bottom: 10px; }
+    #save-filter { margin-top: 10px; }
     #presets, #results { list-style: none; padding: 0; }
     li { margin: 5px 0; padding: 5px; border: 1px solid #ccc; }
     .preset { cursor: pointer; color: blue; }
@@ -14,12 +15,22 @@
   </style>
 </head>
 <body>
-  <input type="text" id="search-bar" placeholder="Search (e.g., label:red due:overdue)" value="">
-  <button id="apply">Apply</button>
-  <button id="save">Save Preset</button>
-  <h3>Saved Presets</h3>
+  <input type="text" id="search-text" placeholder="Search text (e.g., 'start')">
+  <select id="status-filter">
+    <option value="">Any Status</option>
+    <option value="active">Active</option>
+  </select>
+  <select id="assignee-filter">
+    <option value="">Any Assignee</option>
+  </select>
+  <button id="apply">Apply Filter</button>
+  <div>
+    <input type="text" id="filter-alias" placeholder="Filter alias (e.g., 'open cards')">
+    <button id="save-filter">Save Filter</button>
+  </div>
+  <h3>Saved Filters</h3>
   <ul id="presets"></ul>
-  <h3>Results</h3>
+  <h3>Filtered Cards</h3>
   <ul id="results"></ul>
 
   <script>
@@ -29,105 +40,103 @@
       appAuthor: 'GPT AddIns'
     });
 
-    // Load initial query from storage
-    t.get('board', 'private', 'activeQuery', '').then(function(query) {
-      document.getElementById('search-bar').value = query;
+    // Load members for the assignee select
+    t.members('all').then(function(members) {
+      var assigneeSelect = document.getElementById('assignee-filter');
+      members.forEach(function(member) {
+        var option = document.createElement('option');
+        option.value = member.id;
+        option.textContent = member.fullName || member.username;
+        assigneeSelect.appendChild(option);
+      });
     });
 
-    // Load and display presets
-    t.get('board', 'private', 'presets', []).then(function(presets) {
+    // Load saved filters
+    t.get('board', 'private', 'savedFilters', []).then(function(savedFilters) {
       var presetsList = document.getElementById('presets');
-      presets.forEach(function(preset, index) {
+      savedFilters.forEach(function(filter) {
         var li = document.createElement('li');
         li.className = 'preset';
-        li.textContent = preset;
+        li.textContent = filter.alias;
         li.onclick = function() {
-          document.getElementById('search-bar').value = preset;
-          runSearch(preset);
+          document.getElementById('search-text').value = filter.text || '';
+          document.getElementById('status-filter').value = filter.status || '';
+          document.getElementById('assignee-filter').value = filter.assignee || '';
+          applyFilter(filter);
         };
-        var del = document.createElement('button');
-        del.textContent = 'Delete';
-        del.onclick = function(e) {
-          e.stopPropagation();
-          presets.splice(index, 1);
-          t.set('board', 'private', 'presets', presets).then(refreshPresets);
-        };
-        li.appendChild(del);
         presetsList.appendChild(li);
       });
     });
 
-    function refreshPresets() {
-      t.closePopup().then(function() {
-        t.popup({
-          title: 'Advanced Search & Filters',
-          url: './popup.html',
-          height: 400
-        });
-      });
-    }
-
-    // Apply and save actions
-    document.getElementById('search-bar').onkeyup = function(e) {
-      if (e.key === 'Enter') runSearch(this.value);
-    };
+    // Apply filter button
     document.getElementById('apply').onclick = function() {
-      runSearch(document.getElementById('search-bar').value);
+      var filter = getCurrentFilter();
+      applyFilter(filter);
     };
-    document.getElementById('save').onclick = function() {
-      var query = document.getElementById('search-bar').value;
-      if (query) {
-        t.get('board', 'private', 'presets', []).then(function(presets) {
-          if (!presets.includes(query)) {
-            presets.push(query);
-            t.set('board', 'private', 'presets', presets).then(refreshPresets);
-          }
+
+    // Save filter button
+    document.getElementById('save-filter').onclick = function() {
+      var alias = document.getElementById('filter-alias').value.trim();
+      if (alias) {
+        var filter = getCurrentFilter();
+        filter.alias = alias;
+        t.get('board', 'private', 'savedFilters', []).then(function(savedFilters) {
+          savedFilters.push(filter);
+          t.set('board', 'private', 'savedFilters', savedFilters).then(refreshPresets);
         });
       }
     };
 
-    function runSearch(query) {
+    function getCurrentFilter() {
+      return {
+        text: document.getElementById('search-text').value,
+        status: document.getElementById('status-filter').value,
+        assignee: document.getElementById('assignee-filter').value
+      };
+    }
+
+    function applyFilter(filter) {
       var resultsList = document.getElementById('results');
-      resultsList.innerHTML = 'Searching...';
-      t.getRestApi().getToken().then(function(token) {
-        if (!token) {
-          return t.getRestApi().authorize({ scope: 'read', expiration: 'never' }).then(function() {
-            return t.getRestApi().getToken();
-          });
-        }
-        return token;
-      }).then(function(token) {
-        var appKey = '72d09526a2855680e12a04e38b04637c';
-        var url = 'https://api.trello.com/1/search?query=' + encodeURIComponent(query) +
-                  '&modelTypes=cards&cards_limit=100&key=' + appKey + '&token=' + token;
-        return fetch(url);
-      }).then(function(response) {
-        if (!response.ok) throw new Error('API error');
-        return response.json();
-      }).then(function(data) {
+      resultsList.innerHTML = 'Filtering...';
+      t.cards('all').then(function(cards) {
         resultsList.innerHTML = '';
-        if (data.cards && data.cards.length > 0) {
-          data.cards.forEach(function(card) {
+        var filteredCards = cards.filter(card => matchesFilter(card, filter));
+        if (filteredCards.length > 0) {
+          filteredCards.forEach(function(card) {
             var li = document.createElement('li');
             var a = document.createElement('a');
             a.href = card.url;
-            // Check if board exists and has a name, fallback to 'Unknown Board'
-            var boardName = card.board && card.board.name ? card.board.name : 'Unknown Board';
-            a.textContent = card.name + ' (Board: ' + boardName + ')';
+            a.textContent = card.name + ' (List: ' + (card.idListName || 'Unknown List') + ')';
             a.target = '_blank';
             li.appendChild(a);
             resultsList.appendChild(li);
           });
         } else {
-          resultsList.innerHTML = 'No results found.';
+          resultsList.innerHTML = 'No cards match the filter.';
         }
-        t.set('board', 'private', 'activeQuery', query); // Update active filter
-        t.closePopup().then(function() {
-          t.render(); // Refresh badges
-        });
+        t.set('board', 'private', 'activeFilter', filter); // Update active filter
+        t.render(); // Refresh badges
       }).catch(function(error) {
         resultsList.innerHTML = 'Error: ' + error.message;
       });
+    }
+
+    function refreshPresets() {
+      t.closePopup().then(function() {
+        t.popup({
+          title: 'Custom Filters',
+          url: './popup.html',
+          height: 500
+        });
+      });
+    }
+
+    // Helper function to check if a card matches the filter
+    function matchesFilter(card, filter) {
+      var textMatch = !filter.text || (card.name && card.name.toLowerCase().includes(filter.text.toLowerCase()));
+      var statusMatch = !filter.status || (filter.status === 'active' && !card.closed);
+      var assigneeMatch = !filter.assignee || (card.idMembers && card.idMembers.includes(filter.assignee));
+      return textMatch && statusMatch && assigneeMatch;
     }
   </script>
 </body>
