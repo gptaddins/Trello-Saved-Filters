@@ -150,7 +150,7 @@ async function applyFilter(t, filteredCardIds, previousArchived) {
   const cards = await t.cards('id');
   const allIds = cards.map(c => c.id);
 
-  // Compute non-matching IDs to archive
+  // Compute non-matching IDs to archive (open cards not in filtered)
   const nonFilteredIds = allIds.filter(id => !filteredCardIds.includes(id));
 
   // Archive non-matching
