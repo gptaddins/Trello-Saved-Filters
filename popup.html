@@ -111,7 +111,9 @@
             var li = document.createElement('li');
             var a = document.createElement('a');
             a.href = card.url;
-            a.textContent = card.name + ' (Board: ' + card.board.name + ')';
+            // Check if board exists and has a name, fallback to 'Unknown Board'
+            var boardName = card.board && card.board.name ? card.board.name : 'Unknown Board';
+            a.textContent = card.name + ' (Board: ' + boardName + ')';
             a.target = '_blank';
             li.appendChild(a);
             resultsList.appendChild(li);
