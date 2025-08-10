@@ -37,4 +37,89 @@
     t.get('board', 'private', 'presets', []).then(function(presets) {
       var presetsList = document.getElementById('presets');
       presets.forEach(function(preset, index) {
-        var li = document.createElement
+        var li = document.createElement('li');
+        li.className = 'preset';
+        li.textContent = preset;
+        li.onclick = function() {
+          document.getElementById('search-bar').value = preset;
+          runSearch(preset);
+        };
+        var del = document.createElement('button');
+        del.textContent = 'Delete';
+        del.onclick = function(e) {
+          e.stopPropagation();
+          presets.splice(index, 1);
+          t.set('board', 'private', 'presets', presets).then(refreshPresets);
+        };
+        li.appendChild(del);
+        presetsList.appendChild(li);
+      });
+    });
+
+    function refreshPresets() {
+      t.closePopup().then(function() {
+        t.showSettings({ url: './settings.html' });
+      });
+    }
+
+    // Apply and save actions
+    document.getElementById('search-bar').onkeyup = function(e) {
+      if (e.key === 'Enter') runSearch(this.value);
+    };
+    document.getElementById('apply').onclick = function() {
+      runSearch(document.getElementById('search-bar').value);
+    };
+    document.getElementById('save').onclick = function() {
+      var query = document.getElementById('search-bar').value;
+      if (query) {
+        t.get('board', 'private', 'presets', []).then(function(presets) {
+          if (!presets.includes(query)) {
+            presets.push(query);
+            t.set('board', 'private', 'presets', presets).then(refreshPresets);
+          }
+        });
+      }
+    };
+
+    function runSearch(query) {
+      var resultsList = document.getElementById('results');
+      resultsList.innerHTML = 'Searching...';
+      t.getRestApi().getToken().then(function(token) {
+        if (!token) {
+          return t.getRestApi().authorize({ scope: 'read', expiration: 'never' }).then(function() {
+            return t.getRestApi().getToken();
+          });
+        }
+        return token;
+      }).then(function(token) {
+        var appKey = '72d09526a2855680e12a04e38b04637c';
+        var url = 'https://api.trello.com/1/search?query=' + encodeURIComponent(query) +
+                  '&modelTypes=cards&cards_limit=100&key=' + appKey + '&token=' + token;
+        return fetch(url);
+      }).then(function(response) {
+        if (!response.ok) throw new Error('API error');
+        return response.json();
+      }).then(function(data) {
+        resultsList.innerHTML = '';
+        if (data.cards && data.cards.length > 0) {
+          data.cards.forEach(function(card) {
+            var li = document.createElement('li');
+            var a = document.createElement('a');
+            a.href = card.url;
+            a.textContent = card.name + ' (Board: ' + card.board.name + ')';
+            a.target = '_blank';
+            li.appendChild(a);
+            resultsList.appendChild(li);
+          });
+        } else {
+          resultsList.innerHTML = 'No results found.';
+        }
+        t.set('board', 'private', 'activeQuery', query); // Update active filter
+        t.render(); // Refresh badges
+      }).catch(function(error) {
+        resultsList.innerHTML = 'Error: ' + error.message;
+      });
+    }
+  </script>
+</body>
+</html>
