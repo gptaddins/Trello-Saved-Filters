@@ -12,6 +12,7 @@
     li { margin: 5px 0; padding: 5px; border: 1px solid #ccc; }
     .preset { cursor: pointer; color: blue; }
     button { margin-left: 5px; }
+    #instructions { color: #666; font-size: 0.9em; margin-top: 10px; }
   </style>
 </head>
 <body>
@@ -29,6 +30,9 @@
   </div>
   <h3>Saved Filters</h3>
   <ul id="presets"></ul>
+  <div id="instructions">
+    Note: Apply the filter on the board by using Trello’s native filter icon (funnel) and manually selecting the options set here.
+  </div>
 
   <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -153,7 +157,7 @@
               return [];
             });
           });
-          t.closePopup();
+          // Removed t.closePopup() to keep popup open
         }).catch(function(error) {
           console.error('Error applying filter:', error);
         });
