@@ -27,12 +27,32 @@
           if (Object.keys(filter).length > 0) {
             var matches = matchesFilter(card, filter);
             return matches ? [{
-              text: '✓', // Filter match indicator
+              text: '✓', // Indicates the card matches the filter
               color: 'green'
-            }] : [];
+            }] : [{
+              text: '✗', // Indicates the card doesn’t match
+              color: 'gray'
+            }];
           }
           return [];
         });
+      },
+      'card-buttons': function(t, options) {
+        return [{
+          icon: 'https://cdn-icons-png.flaticon.com/512/32/32223.png', // Filter icon
+          text: 'Filter Board',
+          callback: function(t) {
+            return t.board('id').then(function(boardId) {
+              var filter = t.get('board', 'private', 'activeFilter', {});
+              if (Object.keys(filter).length > 0) {
+                t.set('board', 'private', 'activeFilter', filter).then(function() {
+                  t.render();
+                });
+              }
+              return t.closePopup();
+            });
+          }
+        }];
       }
     }, {
       appKey: '72d09526a2855680e12a04e38b04637c',
