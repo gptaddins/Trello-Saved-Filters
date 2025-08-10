@@ -3,9 +3,11 @@ window.TrelloPowerUp.initialize({
     return t.get('board', 'private', 'savedFilters', { presets: [], filteredCardIds: [], activeFilter: null })
       .then(async (data) => {
         if (data.activeFilter) {
-          // Re-compute filteredCardIds if needed for consistency on load
+          // Re-compute and apply filter on load
           data.filteredCardIds = await computeFilteredCardIds(t, data.activeFilter);
           await t.set('board', 'private', 'savedFilters', data);
+          await applyClientSideFilter(t, data.filteredCardIds);
+          console.log('Re-applied filter on startup');
         }
         return [{
           icon: 'https://avatars.githubusercontent.com/u/224228586',
@@ -91,4 +93,16 @@ async function getFilterQuery(t, filter) {
   if (listName) queryParts.push(`list:"${listName}"`);
   if (username) queryParts.push(`member:${username}`);
   return queryParts.join(' ');
+}
+
+async function applyClientSideFilter(t, filteredCardIds) {
+  const cards = await t.cards('id');
+  const filteredSet = new Set(filteredCardIds);
+  cards.forEach(card => {
+    if (filteredSet.has(card.id)) {
+      t.showCard(card.id);
+    } else {
+      t.hideCard(card.id);
+    }
+  });
 }
