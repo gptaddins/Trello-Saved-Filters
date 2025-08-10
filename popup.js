@@ -33,7 +33,7 @@ t.render(async () => {
     await t.set('board', 'private', 'savedFilters', data);
     const query = await getFilterQuery(t, activeFilter);
     const board = await t.board('shortLink');
-    const shortLink = board.shortLink; // Access string from object
+    const shortLink = board.shortLink;
     t.navigate({ url: `https://trello.com/b/${shortLink}?filter=${encodeURIComponent(query)}` });
     t.alert({ message: 'Filter applied automatically! Board updated with matching cards (user-only).', duration: 10 });
     t.closePopup();
@@ -45,7 +45,7 @@ t.render(async () => {
     data.filteredCardIds = [];
     await t.set('board', 'private', 'savedFilters', data);
     const board = await t.board('shortLink');
-    const shortLink = board.shortLink; // Access string from object
+    const shortLink = board.shortLink;
     t.navigate({ url: `https://trello.com/b/${shortLink}` });
     t.alert({ message: 'Filter cleared automatically! All cards visible.', duration: 10 });
     t.closePopup();
