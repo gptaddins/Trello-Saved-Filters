@@ -23,4 +23,4 @@ window.TrelloPowerUp.initialize({
       })
       .catch(() => []);
   }
-}, { appKey: "72d09526a2855680e12a04e38b04637c", appName: "Saved Filters" });
+}, { appKey: "72d09526a2855680e12a04e38b04637c", appName: "Saved Filters", appAuthor: "GPT AddIns" });
