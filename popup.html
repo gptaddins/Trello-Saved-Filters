@@ -23,7 +23,11 @@
   <ul id="results"></ul>
 
   <script>
-    var t = window.TrelloPowerUp.iframe();
+    var t = window.TrelloPowerUp.iframe({
+      appKey: '72d09526a2855680e12a04e38b04637c',
+      appName: 'Saved Filters',
+      appAuthor: 'GPT AddIns'
+    });
 
     // Load initial query from storage
     t.get('board', 'private', 'activeQuery', '').then(function(query) {
