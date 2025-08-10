@@ -14,44 +14,24 @@
           text: 'Filters',
           callback: function(t) {
             return t.popup({
-              title: 'Advanced Search & Filters',
+              title: 'Custom Filters',
               url: './popup.html',
-              height: 400
+              height: 500
             });
           }
         }];
       },
       'card-badges': function(t, options) {
         return t.card('all').then(function(card) {
-          var query = t.get('board', 'private', 'activeQuery', '');
-          if (query) {
-            return t.getRestApi().getToken().then(function(token) {
-              var appKey = '72d09526a2855680e12a04e38b04637c';
-              var url = 'https://api.trello.com/1/search?query=' + encodeURIComponent(query) +
-                        '&modelTypes=cards&cards_limit=100&key=' + appKey + '&token=' + token;
-              return fetch(url).then(function(response) {
-                return response.json();
-              }).then(function(data) {
-                if (data.cards && data.cards.some(c => c.id === card.id)) {
-                  return [{
-                    text: '✓', // Filter match indicator
-                    color: 'green'
-                  }];
-                }
-                return [];
-              });
-            });
+          var filter = t.get('board', 'private', 'activeFilter', {});
+          if (Object.keys(filter).length > 0) {
+            var matches = matchesFilter(card, filter);
+            return matches ? [{
+              text: '✓', // Filter match indicator
+              color: 'green'
+            }] : [];
           }
           return [];
-        });
-      },
-      'show-settings': function(t, options) {
-        return t.get('board', 'private', 'activeQuery', '').then(function(query) {
-          return {
-            url: './settings.html',
-            args: { query: query },
-            height: 600
-          };
         });
       }
     }, {
@@ -59,6 +39,14 @@
       appName: 'Saved Filters',
       appAuthor: 'GPT AddIns'
     });
+
+    // Helper function to check if a card matches the filter
+    function matchesFilter(card, filter) {
+      var textMatch = !filter.text || (card.name && card.name.toLowerCase().includes(filter.text.toLowerCase()));
+      var statusMatch = !filter.status || (filter.status === 'active' && !card.closed);
+      var assigneeMatch = !filter.assignee || (card.idMembers && card.idMembers.includes(filter.assignee));
+      return textMatch && statusMatch && assigneeMatch;
+    }
   </script>
 </body>
 </html>
