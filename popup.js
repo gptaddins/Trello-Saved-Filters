@@ -21,6 +21,7 @@ t.render(async () => {
     assigneeSelect.value = data.activeFilter.assignee || '';
   }
 
+  // Add event listeners here, after DOM is ready
   document.getElementById('apply-filter').addEventListener('click', async () => {
     const activeFilter = {
       text: document.getElementById('filter-text').value,
@@ -30,8 +31,11 @@ t.render(async () => {
     const filteredCardIds = await computeFilteredCardIds(t, activeFilter);
     const data = { ...(await t.get('board', 'private', 'savedFilters', { presets: [] })), activeFilter, filteredCardIds };
     await t.set('board', 'private', 'savedFilters', data);
-    await applyClientSideFilter(t, filteredCardIds);
-    t.alert({ message: 'Filter applied! Non-matching cards hidden (user-only), badges on matching.', duration: 10 });
+    const query = await getFilterQuery(t, activeFilter);
+    const board = await t.board('shortLink');
+    const shortLink = board.shortLink;
+    t.navigate({ url: `https://trello.com/b/${shortLink}?filter=${encodeURIComponent(query)}` });
+    t.alert({ message: 'Filter applied! Board redirected with matching cards (user-only).', duration: 10 });
     t.closePopup();
   });
 
@@ -40,9 +44,10 @@ t.render(async () => {
     data.activeFilter = null;
     data.filteredCardIds = [];
     await t.set('board', 'private', 'savedFilters', data);
-    const cards = await t.cards('id');
-    cards.forEach(card => t.showCard(card.id));
-    t.alert({ message: 'Filter cleared! All cards visible.', duration: 10 });
+    const board = await t.board('shortLink');
+    const shortLink = board.shortLink;
+    t.navigate({ url: `https://trello.com/b/${shortLink}` });
+    t.alert({ message: 'Filter cleared! Board redirected with all cards visible.', duration: 10 });
     t.closePopup();
   });
 
@@ -94,6 +99,19 @@ function updatePresetsList(presets) {
   });
 }
 
+async function getFilterQuery(t, filter) {
+  const [listName, username] = await Promise.all([
+    filter.status ? t.lists('id', 'name').then(lists => lists.find(l => l.id === filter.status)?.name) : null,
+    filter.assignee ? t.board('members').then(board => board.members.find(m => m.id === filter.assignee)?.username) : null
+  ]);
+
+  const queryParts = [];
+  if (filter.text) queryParts.push(filter.text);
+  if (listName) queryParts.push(`list:"${listName}"`);
+  if (username) queryParts.push(`member:${username}`);
+  return queryParts.join(' ');
+}
+
 async function computeFilteredCardIds(t, filter) {
   if (!filter || (!filter.text && !filter.status && !filter.assignee)) {
     const cards = await t.cards('id');
@@ -126,29 +144,4 @@ async function computeFilteredCardIds(t, filter) {
     console.error('Search API fetch failed:', err);
     return [];
   }
-}
-
-async function getFilterQuery(t, filter) {
-  const [listName, username] = await Promise.all([
-    filter.status ? t.lists('id', 'name').then(lists => lists.find(l => l.id === filter.status)?.name) : null,
-    filter.assignee ? t.board('members').then(board => board.members.find(m => m.id === filter.assignee)?.username) : null
-  ]);
-
-  const queryParts = [];
-  if (filter.text) queryParts.push(filter.text);
-  if (listName) queryParts.push(`list:"${listName}"`);
-  if (username) queryParts.push(`member:${username}`);
-  return queryParts.join(' ');
-}
-
-async function applyClientSideFilter(t, filteredCardIds) {
-  const cards = await t.cards('id');
-  const filteredSet = new Set(filteredCardIds);
-  cards.forEach(card => {
-    if (filteredSet.has(card.id)) {
-      t.showCard(card.id);
-    } else {
-      t.hideCard(card.id);
-    }
-  });
 }
