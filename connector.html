@@ -40,7 +40,6 @@
       appAuthor: 'GPT AddIns'
     });
 
-    // Helper function to check if a card matches the filter
     function matchesFilter(card, filter) {
       var textMatch = !filter.text || (card.name && card.name.toLowerCase().includes(filter.text.toLowerCase()));
       var statusMatch = !filter.status || (card.idList && filter.status === card.idList);
