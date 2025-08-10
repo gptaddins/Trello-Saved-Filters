@@ -43,7 +43,7 @@
     // Helper function to check if a card matches the filter
     function matchesFilter(card, filter) {
       var textMatch = !filter.text || (card.name && card.name.toLowerCase().includes(filter.text.toLowerCase()));
-      var statusMatch = !filter.status || (filter.status === 'active' && !card.closed);
+      var statusMatch = !filter.status || (card.idList && filter.status === card.idList);
       var assigneeMatch = !filter.assignee || (card.idMembers && card.idMembers.includes(filter.assignee));
       return textMatch && statusMatch && assigneeMatch;
     }
