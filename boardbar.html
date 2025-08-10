@@ -1,109 +1,110 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Saved Filters | Board Bar</title>
-  <script src="https://p.trellocdn.com/power-up.min.js"></script>
-  <style>
-    body {
-      margin: 0;
-      font-family: Inter, Arial, sans-serif;
-      background: #f4f5f7;
-      padding: 12px;
-    }
-    .toolbar {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-    input[type="text"] {
-      flex: 1;
-      padding: 8px 10px;
-      border-radius: 6px;
-      border: 1px solid #dfe1e6;
-    }
-    button {
-      padding: 8px 12px;
-      border-radius: 6px;
-      border: none;
-      background: #0079bf;
-      color: white;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #026aa7;
-    }
-    .preset-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-    .preset-list li {
-      padding: 6px;
-      cursor: pointer;
-      border-radius: 4px;
-    }
-    .preset-list li:hover {
-      background: #ebecf0;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Saved Filters | Board Bar</title>
+<script src="https://p.trellocdn.com/power-up.min.js"></script>
+<style>
+  body {
+    margin: 0;
+    font-family: Inter, Arial, sans-serif;
+    background: #f4f5f7;
+    padding: 12px;
+  }
+  .toolbar { display: flex; gap: 8px; margin-bottom: 12px; }
+  input { flex: 1; padding: 8px 10px; border: 1px solid #dfe1e6; border-radius: 6px; }
+  button { padding: 8px 12px; border-radius: 6px; border: none; cursor: pointer; }
+  #searchBtn { background: #0079bf; color: white; }
+  #searchBtn:hover { background: #026aa7; }
+  #saveBtn { background: #f4f5f7; border: 1px solid #dfe1e6; }
+  ul { list-style: none; padding: 0; margin: 0; }
+  li { padding: 6px; cursor: pointer; border-radius: 4px; }
+  li:hover { background: #ebecf0; }
+</style>
 </head>
 <body>
   <div class="toolbar">
     <input id="query" type="text" placeholder="Example: label:red due:overdue OR @me">
     <button id="searchBtn">Apply</button>
     <button id="saveBtn">Save</button>
+    <button id="clearBtn">Clear</button>
   </div>
 
   <h4>Saved Presets</h4>
-  <ul id="presets" class="preset-list"></ul>
+  <ul id="presets"></ul>
 
-  <script>
-    const t = window.TrelloPowerUp.iframe({appKey:"72d09526a2855680e12a04e38b04637c",appName:"Saved Filters",appAuthor:"GPT AddIns"});
-    const queryEl = document.getElementById('query');
-    const presetsEl = document.getElementById('presets');
+<script>
+const t = window.TrelloPowerUp.iframe({appKey:"72d09526a2855680e12a04e38b04637c",appName:"Saved Filters",appAuthor:"GPT AddIns"});
+const API_KEY = "72d09526a2855680e12a04e38b04637c";
+let USER_TOKEN;
 
-    async function renderPresets() {
-      const presets = await t.get('board', 'private', 'presets', []);
-      presetsEl.innerHTML = '';
-      if (!presets.length) {
-        const li = document.createElement('li');
-        li.textContent = 'No presets saved yet.';
-        li.style.color = '#6b778c';
-        presetsEl.appendChild(li);
-        return;
-      }
-      presets.forEach(preset => {
-        const li = document.createElement('li');
-        li.textContent = preset;
-        li.onclick = () => applyFilter(preset);
-        presetsEl.appendChild(li);
-      });
-    }
+async function ensureAuth() {
+  const restApi = await t.getRestApi();
+  if (!(await restApi.isAuthorized())) {
+    await restApi.authorize({ scope: 'read', expiration: 'never' });
+  }
+  if (typeof restApi.getToken === 'function') {
+    USER_TOKEN = await restApi.getToken();
+  }
+}
 
-    function applyFilter(query) {
-      // Close the board bar and open Trello's native search
-      t.closeBoardBar();
-      window.open(`https://trello.com/search?q=${encodeURIComponent(query)}`, '_self');
-    }
+async function runSearch(query) {
+  await ensureAuth();
+  const params = new URLSearchParams({
+    query,
+    modelTypes: 'cards',
+    cards_limit: '1000',
+    key: API_KEY,
+    token: USER_TOKEN
+  });
+  const res = await fetch(`https://api.trello.com/1/search?${params.toString()}`);
+  const data = await res.json();
+  const ids = (data.cards || []).map(c => c.id);
+  t.set('board', 'private', 'filteredCardIds', ids);
+  t.closeBoardBar();
+  t.alert({ message: `Filtered to ${ids.length} cards` });
+}
 
-    document.getElementById('searchBtn').onclick = () => {
-      const q = queryEl.value.trim();
-      if (q) applyFilter(q);
-    };
+async function renderPresets() {
+  const presets = await t.get('board', 'private', 'presets', []);
+  const el = document.getElementById('presets');
+  el.innerHTML = '';
+  if (!presets.length) {
+    const li = document.createElement('li');
+    li.textContent = 'No presets saved yet.';
+    el.appendChild(li);
+    return;
+  }
+  presets.forEach(preset => {
+    const li = document.createElement('li');
+    li.textContent = preset;
+    li.onclick = () => runSearch(preset);
+    el.appendChild(li);
+  });
+}
 
-    document.getElementById('saveBtn').onclick = async () => {
-      const q = queryEl.value.trim();
-      if (!q) return;
-      const presets = await t.get('board', 'private', 'presets', []);
-      if (!presets.includes(q)) {
-        presets.push(q);
-        await t.set('board', 'private', 'presets', presets);
-        renderPresets();
-      }
-    };
+document.getElementById('searchBtn').onclick = () => {
+  const q = document.getElementById('query').value.trim();
+  if (q) runSearch(q);
+};
 
+document.getElementById('saveBtn').onclick = async () => {
+  const q = document.getElementById('query').value.trim();
+  if (!q) return;
+  const presets = await t.get('board', 'private', 'presets', []);
+  if (!presets.includes(q)) {
+    presets.push(q);
+    await t.set('board', 'private', 'presets', presets);
     renderPresets();
-  </script>
+  }
+};
+
+document.getElementById('clearBtn').onclick = async () => {
+  await t.set('board', 'private', 'filteredCardIds', []);
+  t.closeBoardBar();
+};
+
+renderPresets();
+</script>
 </body>
 </html>
