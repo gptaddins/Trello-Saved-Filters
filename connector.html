@@ -7,23 +7,36 @@
 </head>
 <body>
 <script>
-  window.TrelloPowerUp.initialize({
-    'board-buttons': function(t) {
-      return [{
-        icon: 'https://avatars.githubusercontent.com/u/224228586',
-        text: 'Saved Filters',
-        callback: function(t) {
-          return t.boardBar({
-            url: './boardbar.html',
-            height: 220
-          });
-        }
-      }];
-    },
-    'board': function(t) {
-      // Board capability to inject filtering script
+const tpuConfig = {appKey:"72d09526a2855680e12a04e38b04637c", appName:"Saved Filters", appAuthor:"GPT AddIns"};
+
+window.TrelloPowerUp.initialize({
+  'board-buttons': function(t) {
+    return [{
+      icon: 'https://avatars.githubusercontent.com/u/224228586',
+      text: 'Saved Filters',
+      callback: function(t) {
+        return t.boardBar({
+          url: './boardbar.html',
+          height: 220
+        });
+      }
+    }];
+  },
+
+  'board': function(t) {
+    async function applyFilterToBoard() {
+      const ids = await t.get('board', 'private', 'filteredCardIds', []);
+      const allCards = document.querySelectorAll('.list-card');
+      allCards.forEach(card => {
+        const href = card.querySelector('a.list-card-title')?.href || '';
+        const match = ids.length === 0 || ids.some(id => href.includes(id));
+        card.style.display = match ? '' : 'none';
+      });
     }
-  });
+    setInterval(applyFilterToBoard, 1000);
+    return [];
+  }
+}, tpuConfig);
 </script>
 </body>
 </html>
