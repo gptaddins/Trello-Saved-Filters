@@ -34,7 +34,7 @@ t.render(async () => {
     data.filteredCardIds = filteredCardIds;
     data.archivedByFilter = await applyFilter(t, filteredCardIds, data.archivedByFilter || []);
     await t.set('board', 'private', 'savedFilters', data);
-    t.closePopup();
+    setTimeout(() => t.closePopup(), 500); // Delay to allow sync
   });
 
   document.getElementById('clear-filter').addEventListener('click', async () => {
@@ -46,7 +46,7 @@ t.render(async () => {
     data.filteredCardIds = [];
     data.archivedByFilter = [];
     await t.set('board', 'private', 'savedFilters', data);
-    t.closePopup();
+    setTimeout(() => t.closePopup(), 500); // Delay to allow sync
   });
 
   document.getElementById('save-preset').addEventListener('click', () => {
