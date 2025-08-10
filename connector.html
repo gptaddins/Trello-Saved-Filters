@@ -6,37 +6,51 @@
   <script src="https://p.trellocdn.com/power-up.min.js"></script>
 </head>
 <body>
-<script>
-const tpuConfig = {appKey:"72d09526a2855680e12a04e38b04637c", appName:"Saved Filters", appAuthor:"GPT AddIns"};
-
-window.TrelloPowerUp.initialize({
-  'board-buttons': function(t) {
-    return [{
-      icon: 'https://avatars.githubusercontent.com/u/224228586',
-      text: 'Saved Filters',
-      callback: function(t) {
-        return t.boardBar({
-          url: './boardbar.html',
-          height: 220
+  <script>
+    window.TrelloPowerUp.initialize({
+      'board-bar': function(t, options) {
+        return [{
+          title: 'Filters',
+          icon: 'https://your-hosted-icon.png', // Replace with search icon URL
+          condition: 'always',
+          callback: function(t) {
+            return t.sizeTo('#filters-panel').then(function() {
+              return {
+                url: './board.html',
+                height: '100%'
+              };
+            });
+          }
+        }];
+      },
+      'card-badges': function(t, options) {
+        return t.card('all').then(function(card) {
+          var query = t.get('board', 'private', 'activeQuery', '');
+          if (query) {
+            return t.getRestApi().getToken().then(function(token) {
+              var appKey = t.arg('appKey') || 'your-app-key-here';
+              var url = 'https://api.trello.com/1/search?query=' + encodeURIComponent(query) +
+                        '&modelTypes=cards&cards_limit=100&key=' + appKey + '&token=' + token;
+              return fetch(url).then(function(response) {
+                return response.json();
+              }).then(function(data) {
+                if (data.cards && data.cards.some(c => c.id === card.id)) {
+                  return [{
+                    text: '✓', // Filter match indicator
+                    color: 'green'
+                  }];
+                }
+                return [];
+              });
+            });
+          }
+          return [];
         });
       }
-    }];
-  },
-
-  'board': function(t) {
-    async function applyFilterToBoard() {
-      const ids = await t.get('board', 'private', 'filteredCardIds', []);
-      const allCards = document.querySelectorAll('.list-card');
-      allCards.forEach(card => {
-        const href = card.querySelector('a.list-card-title')?.href || '';
-        const match = ids.length === 0 || ids.some(id => href.includes(id));
-        card.style.display = match ? '' : 'none';
-      });
-    }
-    setInterval(applyFilterToBoard, 1000);
-    return [];
-  }
-}, tpuConfig);
-</script>
+    }, {
+      appKey: '72d09526a2855680e12a04e38b04637c', // Replace with your API key
+      appName: 'Saved Filters'
+    });
+  </script>
 </body>
 </html>
