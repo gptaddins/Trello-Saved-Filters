@@ -1,16 +1,24 @@
 window.TrelloPowerUp.initialize({
   'board-buttons': function(t, options) {
-    return [{
-      icon: 'https://avatars.githubusercontent.com/u/224228586',
-      text: 'Saved Filters',
-      callback: function(t) {
-        return t.popup({
-          title: 'Saved Filters',
-          url: './popup.html',
-          height: 300
-        });
-      }
-    }];
+    return t.get('board', 'private', 'savedFilters', { presets: [], filteredCardIds: [], activeFilter: null })
+      .then(async (data) => {
+        if (data.activeFilter) {
+          // Re-compute filteredCardIds if needed for consistency on load
+          data.filteredCardIds = await computeFilteredCardIds(t, data.activeFilter);
+          await t.set('board', 'private', 'savedFilters', data);
+        }
+        return [{
+          icon: 'https://avatars.githubusercontent.com/u/224228586',
+          text: 'Saved Filters',
+          callback: function(t) {
+            return t.popup({
+              title: 'Saved Filters',
+              url: './popup.html',
+              height: 300
+            });
+          }
+        }];
+      });
   },
   'card-badges': function(t, options) {
     return t.card('id')
@@ -22,7 +30,7 @@ window.TrelloPowerUp.initialize({
         return t.get('board', 'private', 'savedFilters')
           .then(data => {
             console.log('Badge data for card', card.id, ':', data);
-            if (data && data.activeFilter && data.filteredCardIds && data.filteredCardIds.includes(card.id)) {
+            if (data && data.activeFilter && data.filteredCardIds.includes(card.id)) {
               console.log('Applying Filtered badge to card', card.id);
               return [{ text: 'Filtered', color: 'blue' }];
             } else {
