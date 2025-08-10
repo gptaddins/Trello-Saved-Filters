@@ -13,9 +13,10 @@
           icon: 'https://avatars.githubusercontent.com/u/224228586', // Your app icon
           text: 'Filters',
           callback: function(t) {
-            return t.showSettings({
-              url: './settings.html',
-              height: 600 // Adjust based on content
+            return t.popup({
+              title: 'Advanced Search & Filters',
+              url: './popup.html',
+              height: 400
             });
           }
         }];
