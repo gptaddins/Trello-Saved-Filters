@@ -28,13 +28,13 @@ window.TrelloPowerUp.initialize({
       });
   },
   'card-badges': function(t, options) {
+    console.log({options:options})
     if (!options || !options.card || !options.card.id) {
       console.log('Skipping badge evaluation: undefined card');
       return [];
     }
     return t.get('board', 'private', 'savedFilters')
       .then(function(data) {
-        console.log({data: data, options:options})
         console.log('Badge data for card', options.card.id, ':', data);
         if (data && data.activeFilter && data.filteredCardIds.includes(options.card.id)) {
           console.log('Applying Filtered badge to card', options.card.id);
