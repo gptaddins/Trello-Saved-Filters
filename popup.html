@@ -60,7 +60,7 @@
         if (token) {
           t.board('id').then(function(boardId) {
             var appKey = '72d09526a2855680e12a04e38b04637c';
-            var url = `https://api.trello.com/1/boards/${boardId}/members?key=${appKey}&token=${token}`;
+            var url = `https://api.trello.com/1/boards/${boardId.id}/members?key=${appKey}&token=${token}`;
             fetch(url).then(function(response) {
               if (!response.ok) throw new Error('Failed to fetch members');
               return response.json();
@@ -148,7 +148,11 @@
 
       function applyFilter(filter) {
         t.set('board', 'private', 'activeFilter', filter).then(function() {
-          t.render(); // Refresh badges to reflect the filter
+          t.render(function() {
+            return t.card('all').then(function() {
+              return [];
+            });
+          });
           t.closePopup();
         }).catch(function(error) {
           console.error('Error applying filter:', error);
