@@ -28,6 +28,10 @@ window.TrelloPowerUp.initialize({
       });
   },
   'card-badges': function(t, options) {
+    if (!options || !options.card || !options.card.id) {
+      console.log('Skipping badge evaluation: undefined card');
+      return [];
+    }
     return t.get('board', 'private', 'savedFilters')
       .then(function(data) {
         console.log('Badge data for card', options.card.id, ':', data);
