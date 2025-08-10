@@ -31,10 +31,11 @@ t.render(async () => {
     const filteredCardIds = await computeFilteredCardIds(t, activeFilter);
     const data = { ...(await t.get('board', 'private', 'savedFilters', { presets: [] })), activeFilter, filteredCardIds };
     await t.set('board', 'private', 'savedFilters', data);
-    const query = await getFilterQuery(t, activeFilter);
     const board = await t.board('shortLink');
     const shortLink = board.shortLink;
-    t.navigate({ url: `https://trello.com/b/${shortLink}?filter=${encodeURIComponent(query)}` });
+    const query = await getFilterQuery(t, activeFilter);
+    const filteredUrl = `https://trello.com/b/${shortLink}?filter=${encodeURIComponent(query)}`;
+    window.top.location.href = filteredUrl; // Use window.top to redirect the parent frame
     t.alert({ message: 'Filter applied! Board redirected with matching cards (user-only).', duration: 10 });
     t.closePopup();
   });
@@ -46,7 +47,8 @@ t.render(async () => {
     await t.set('board', 'private', 'savedFilters', data);
     const board = await t.board('shortLink');
     const shortLink = board.shortLink;
-    t.navigate({ url: `https://trello.com/b/${shortLink}` });
+    const unfilteredUrl = `https://trello.com/b/${shortLink}`;
+    window.top.location.href = unfilteredUrl; // Use window.top to redirect the parent frame
     t.alert({ message: 'Filter cleared! Board redirected with all cards visible.', duration: 10 });
     t.closePopup();
   });
