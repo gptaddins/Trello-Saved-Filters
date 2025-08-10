@@ -1,185 +1,28 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>Custom Filters</title>
+  <title>Saved Filters</title>
   <script src="https://p.trellocdn.com/power-up.min.js"></script>
+  <script src="./popup.js"></script>
   <style>
-    body { margin: 0; padding: 10px; font-family: Arial, sans-serif; }
-    input, select { width: 100%; padding: 5px; margin-bottom: 10px; }
-    #save-filter { margin-top: 10px; }
-    #presets { list-style: none; padding: 0; }
-    li { margin: 5px 0; padding: 5px; border: 1px solid #ccc; }
-    .preset { cursor: pointer; color: blue; }
-    button { margin-left: 5px; }
-    #instructions { color: #666; font-size: 0.9em; margin-top: 10px; }
+    body { font-family: Arial, sans-serif; padding: 10px; }
+    label { display: block; margin-top: 10px; }
+    input, select { width: 100%; }
+    button { margin-top: 10px; }
+    ul { list-style: none; padding: 0; }
+    li { margin-bottom: 5px; }
+    li button { margin-left: 10px; }
   </style>
 </head>
 <body>
-  <input type="text" id="search-text" placeholder="Search text (e.g., 'start')">
-  <select id="status-filter">
-    <option value="">Any List</option>
-  </select>
-  <select id="assignee-filter">
-    <option value="">Any Assignee</option>
-  </select>
-  <button id="apply">Apply Filter</button>
-  <div>
-    <input type="text" id="filter-alias" placeholder="Filter alias (e.g., 'open cards')">
-    <button id="save-filter">Save Filter</button>
-  </div>
-  <h3>Saved Filters</h3>
-  <ul id="presets"></ul>
-  <div id="instructions">
-    Note: Apply the filter on the board by using Trello’s native filter icon (funnel) and manually selecting the options set here.
-  </div>
-
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      var t = window.TrelloPowerUp.iframe({
-        appKey: '72d09526a2855680e12a04e38b04637c',
-        appName: 'Saved Filters',
-        appAuthor: 'GPT AddIns'
-      });
-
-      // Populate status filter with board lists
-      t.board('id').then(function(boardId) {
-        t.lists('all').then(function(lists) {
-          var statusSelect = document.getElementById('status-filter');
-          if (statusSelect) {
-            lists.forEach(function(list) {
-              var option = document.createElement('option');
-              option.value = list.id;
-              option.textContent = list.name;
-              statusSelect.appendChild(option);
-            });
-          }
-        }).catch(function(error) {
-          console.error('Error fetching lists:', error);
-        });
-      });
-
-      // Populate assignee filter with board members
-      t.getRestApi().getToken().then(function(token) {
-        if (token) {
-          t.board('id').then(function(boardId) {
-            var appKey = '72d09526a2855680e12a04e38b04637c';
-            var url = `https://api.trello.com/1/boards/${boardId.id}/members?key=${appKey}&token=${token}`;
-            fetch(url).then(function(response) {
-              if (!response.ok) throw new Error('Failed to fetch members');
-              return response.json();
-            }).then(function(members) {
-              var assigneeSelect = document.getElementById('assignee-filter');
-              if (assigneeSelect) {
-                members.forEach(function(member) {
-                  var option = document.createElement('option');
-                  option.value = member.id;
-                  option.textContent = member.fullName || member.username;
-                  assigneeSelect.appendChild(option);
-                });
-              }
-            }).catch(function(error) {
-              console.error('Error fetching members:', error);
-              t.get('member', 'id').then(function(memberId) {
-                var assigneeSelect = document.getElementById('assignee-filter');
-                if (assigneeSelect) {
-                  var option = document.createElement('option');
-                  option.value = memberId;
-                  option.textContent = 'Me';
-                  assigneeSelect.appendChild(option);
-                }
-              });
-            });
-          });
-        }
-      });
-
-      // Load saved filters
-      t.get('board', 'private', 'savedFilters', []).then(function(savedFilters) {
-        var presetsList = document.getElementById('presets');
-        if (presetsList) {
-          savedFilters.forEach(function(filter) {
-            var li = document.createElement('li');
-            li.className = 'preset';
-            li.textContent = filter.alias;
-            li.onclick = function() {
-              document.getElementById('search-text').value = filter.text || '';
-              document.getElementById('status-filter').value = filter.status || '';
-              document.getElementById('assignee-filter').value = filter.assignee || '';
-              applyFilter(filter);
-            };
-            presetsList.appendChild(li);
-          });
-        }
-      }).catch(function(error) {
-        console.error('Error loading saved filters:', error);
-      });
-
-      // Apply filter button
-      var applyButton = document.getElementById('apply');
-      if (applyButton) {
-        applyButton.addEventListener('click', function() {
-          var filter = getCurrentFilter();
-          applyFilter(filter);
-        });
-      }
-
-      // Save filter button
-      var saveButton = document.getElementById('save-filter');
-      if (saveButton) {
-        saveButton.addEventListener('click', function() {
-          var alias = document.getElementById('filter-alias').value.trim();
-          if (alias) {
-            var filter = getCurrentFilter();
-            filter.alias = alias;
-            t.get('board', 'private', 'savedFilters', []).then(function(savedFilters) {
-              savedFilters.push(filter);
-              t.set('board', 'private', 'savedFilters', savedFilters).then(refreshPresets);
-            }).catch(function(error) {
-              console.error('Error saving filter:', error);
-            });
-          }
-        });
-      }
-
-      function getCurrentFilter() {
-        return {
-          text: document.getElementById('search-text').value,
-          status: document.getElementById('status-filter').value,
-          assignee: document.getElementById('assignee-filter').value
-        };
-      }
-
-      function applyFilter(filter) {
-        t.set('board', 'private', 'activeFilter', filter).then(function() {
-          t.render(function() {
-            // No need for t.card() here; badges are handled by connector.html
-            return Promise.resolve([]);
-          });
-        }).catch(function(error) {
-          console.error('Error applying filter:', error);
-        });
-      }
-
-      function refreshPresets() {
-        t.closePopup().then(function() {
-          t.popup({
-            title: 'Custom Filters',
-            url: './popup.html',
-            height: 500
-          });
-        }).catch(function(error) {
-          console.error('Error refreshing presets:', error);
-        });
-      }
-
-      function matchesFilter(card, filter) {
-        var textMatch = !filter.text || (card.name && card.name.toLowerCase().includes(filter.text.toLowerCase()));
-        var statusMatch = !filter.status || (card.idList && filter.status === card.idList);
-        var assigneeMatch = !filter.assignee || (card.idMembers && card.idMembers.includes(filter.assignee));
-        return textMatch && statusMatch && assigneeMatch;
-      }
-    });
-  </script>
+  <h3>Apply Filter</h3>
+  <label>Text:</label><input id="filter-text" type="text">
+  <label>Status (List):</label><select id="filter-status"></select>
+  <label>Assignee:</label><select id="filter-assignee"></select>
+  <button id="apply-filter">Apply</button>
+  <button id="clear-filter">Clear</button>
+  <h3>Saved Presets</h3>
+  <ul id="presets-list"></ul>
+  <button id="save-preset">Save Current as Preset</button>
 </body>
 </html>
