@@ -13,6 +13,25 @@
     .preset { cursor: pointer; color: blue; }
     button { margin-left: 5px; }
   </style>
+</head>
+<body>
+  <input type="text" id="search-text" placeholder="Search text (e.g., 'start')">
+  <select id="status-filter">
+    <option value="">Any List</option>
+  </select>
+  <select id="assignee-filter">
+    <option value="">Any Assignee</option>
+  </select>
+  <button id="apply">Apply Filter</button>
+  <div>
+    <input type="text" id="filter-alias" placeholder="Filter alias (e.g., 'open cards')">
+    <button id="save-filter">Save Filter</button>
+  </div>
+  <h3>Saved Filters</h3>
+  <ul id="presets"></ul>
+  <h3>Filtered Cards</h3>
+  <ul id="results"></ul>
+
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       var t = window.TrelloPowerUp.iframe({
@@ -22,22 +41,28 @@
       });
 
       // Populate status filter with board lists
-      t.get('board', 'shared', 'id').then(function(boardId) {
+      t.board('id').then(function(boardId) {
         t.lists('all').then(function(lists) {
           var statusSelect = document.getElementById('status-filter');
-          lists.forEach(function(list) {
-            var option = document.createElement('option');
-            option.value = list.id;
-            option.textContent = list.name;
-            statusSelect.appendChild(option);
-          });
+          if (statusSelect) {
+            lists.forEach(function(list) {
+              var option = document.createElement('option');
+              option.value = list.id;
+              option.textContent = list.name;
+              statusSelect.appendChild(option);
+            });
+          } else {
+            console.error('Status filter select not found');
+          }
+        }).catch(function(error) {
+          console.error('Error fetching lists:', error);
         });
       });
 
       // Populate assignee filter with board members
       t.getRestApi().getToken().then(function(token) {
         if (token) {
-          t.get('board', 'shared', 'id').then(function(boardId) {
+          t.board('id').then(function(boardId) {
             var appKey = '72d09526a2855680e12a04e38b04637c';
             var url = `https://api.trello.com/1/boards/${boardId}/members?key=${appKey}&token=${token}`;
             fetch(url).then(function(response) {
@@ -45,21 +70,27 @@
               return response.json();
             }).then(function(members) {
               var assigneeSelect = document.getElementById('assignee-filter');
-              members.forEach(function(member) {
-                var option = document.createElement('option');
-                option.value = member.id;
-                option.textContent = member.fullName || member.username;
-                assigneeSelect.appendChild(option);
-              });
+              if (assigneeSelect) {
+                members.forEach(function(member) {
+                  var option = document.createElement('option');
+                  option.value = member.id;
+                  option.textContent = member.fullName || member.username;
+                  assigneeSelect.appendChild(option);
+                });
+              } else {
+                console.error('Assignee filter select not found');
+              }
             }).catch(function(error) {
               console.error('Error fetching members:', error);
               // Fallback to current user
               t.get('member', 'id').then(function(memberId) {
                 var assigneeSelect = document.getElementById('assignee-filter');
-                var option = document.createElement('option');
-                option.value = memberId;
-                option.textContent = 'Me';
-                assigneeSelect.appendChild(option);
+                if (assigneeSelect) {
+                  var option = document.createElement('option');
+                  option.value = memberId;
+                  option.textContent = 'Me';
+                  assigneeSelect.appendChild(option);
+                }
               });
             });
           });
@@ -69,38 +100,54 @@
       // Load saved filters
       t.get('board', 'private', 'savedFilters', []).then(function(savedFilters) {
         var presetsList = document.getElementById('presets');
-        savedFilters.forEach(function(filter) {
-          var li = document.createElement('li');
-          li.className = 'preset';
-          li.textContent = filter.alias;
-          li.onclick = function() {
-            document.getElementById('search-text').value = filter.text || '';
-            document.getElementById('status-filter').value = filter.status || '';
-            document.getElementById('assignee-filter').value = filter.assignee || '';
-            applyFilter(filter);
-          };
-          presetsList.appendChild(li);
-        });
+        if (presetsList) {
+          savedFilters.forEach(function(filter) {
+            var li = document.createElement('li');
+            li.className = 'preset';
+            li.textContent = filter.alias;
+            li.onclick = function() {
+              document.getElementById('search-text').value = filter.text || '';
+              document.getElementById('status-filter').value = filter.status || '';
+              document.getElementById('assignee-filter').value = filter.assignee || '';
+              applyFilter(filter);
+            };
+            presetsList.appendChild(li);
+          });
+        }
+      }).catch(function(error) {
+        console.error('Error loading saved filters:', error);
       });
 
       // Apply filter button
-      document.getElementById('apply').addEventListener('click', function() {
-        var filter = getCurrentFilter();
-        applyFilter(filter);
-      });
+      var applyButton = document.getElementById('apply');
+      if (applyButton) {
+        applyButton.addEventListener('click', function() {
+          var filter = getCurrentFilter();
+          applyFilter(filter);
+        });
+      } else {
+        console.error('Apply button not found');
+      }
 
       // Save filter button
-      document.getElementById('save-filter').addEventListener('click', function() {
-        var alias = document.getElementById('filter-alias').value.trim();
-        if (alias) {
-          var filter = getCurrentFilter();
-          filter.alias = alias;
-          t.get('board', 'private', 'savedFilters', []).then(function(savedFilters) {
-            savedFilters.push(filter);
-            t.set('board', 'private', 'savedFilters', savedFilters).then(refreshPresets);
-          });
-        }
-      });
+      var saveButton = document.getElementById('save-filter');
+      if (saveButton) {
+        saveButton.addEventListener('click', function() {
+          var alias = document.getElementById('filter-alias').value.trim();
+          if (alias) {
+            var filter = getCurrentFilter();
+            filter.alias = alias;
+            t.get('board', 'private', 'savedFilters', []).then(function(savedFilters) {
+              savedFilters.push(filter);
+              t.set('board', 'private', 'savedFilters', savedFilters).then(refreshPresets);
+            }).catch(function(error) {
+              console.error('Error saving filter:', error);
+            });
+          }
+        });
+      } else {
+        console.error('Save button not found');
+      }
 
       function getCurrentFilter() {
         return {
@@ -112,28 +159,33 @@
 
       function applyFilter(filter) {
         var resultsList = document.getElementById('results');
-        resultsList.innerHTML = 'Filtering...';
-        t.cards('all').then(function(cards) {
-          resultsList.innerHTML = '';
-          var filteredCards = cards.filter(card => matchesFilter(card, filter));
-          if (filteredCards.length > 0) {
-            filteredCards.forEach(function(card) {
-              var li = document.createElement('li');
-              var a = document.createElement('a');
-              a.href = card.url;
-              a.textContent = card.name + ' (List: ' + (card.idListName || 'Unknown List') + ')';
-              a.target = '_blank';
-              li.appendChild(a);
-              resultsList.appendChild(li);
+        if (resultsList) {
+          resultsList.innerHTML = 'Filtering...';
+          t.cards('all').then(function(cards) {
+            resultsList.innerHTML = '';
+            var filteredCards = cards.filter(card => matchesFilter(card, filter));
+            if (filteredCards.length > 0) {
+              filteredCards.forEach(function(card) {
+                var li = document.createElement('li');
+                var a = document.createElement('a');
+                a.href = card.url;
+                a.textContent = card.name + ' (List: ' + (card.idListName || 'Unknown List') + ')';
+                a.target = '_blank';
+                li.appendChild(a);
+                resultsList.appendChild(li);
+              });
+            } else {
+              resultsList.innerHTML = 'No cards match the filter.';
+            }
+            t.set('board', 'private', 'activeFilter', filter).then(function() {
+              t.render();
+            }).catch(function(error) {
+              console.error('Error applying filter:', error);
             });
-          } else {
-            resultsList.innerHTML = 'No cards match the filter.';
-          }
-          t.set('board', 'private', 'activeFilter', filter); // Update active filter
-          t.render(); // Refresh badges
-        }).catch(function(error) {
-          resultsList.innerHTML = 'Error: ' + error.message;
-        });
+          }).catch(function(error) {
+            resultsList.innerHTML = 'Error: ' + error.message;
+          });
+        }
       }
 
       function refreshPresets() {
@@ -143,10 +195,11 @@
             url: './popup.html',
             height: 500
           });
+        }).catch(function(error) {
+          console.error('Error refreshing presets:', error);
         });
       }
 
-      // Helper function to check if a card matches the filter
       function matchesFilter(card, filter) {
         var textMatch = !filter.text || (card.name && card.name.toLowerCase().includes(filter.text.toLowerCase()));
         var statusMatch = !filter.status || (card.idList && filter.status === card.idList);
