@@ -46,7 +46,11 @@
               var filter = t.get('board', 'private', 'activeFilter', {});
               if (Object.keys(filter).length > 0) {
                 t.set('board', 'private', 'activeFilter', filter).then(function() {
-                  t.render();
+                  t.render(function() {
+                    return t.card('all').then(function() {
+                      return [];
+                    });
+                  });
                 });
               }
               return t.closePopup();
