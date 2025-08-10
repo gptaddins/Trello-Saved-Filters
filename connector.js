@@ -10,6 +10,7 @@ window.TrelloPowerUp.initialize({
         return [{
           icon: 'https://avatars.githubusercontent.com/u/224228586',
           text: 'Saved Filters',
+          title: 'Saved Filters',
           callback: function(t) {
             return t.popup({
               title: 'Saved Filters',
