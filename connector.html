@@ -27,10 +27,10 @@
           if (Object.keys(filter).length > 0) {
             var matches = matchesFilter(card, filter);
             return matches ? [{
-              text: '✓', // Indicates the card matches the filter
+              text: '✓ Filtered', // Clearer feedback
               color: 'green'
             }] : [{
-              text: '✗', // Indicates the card doesn’t match
+              text: '✗ Not Filtered', // Clearer feedback
               color: 'gray'
             }];
           }
@@ -40,7 +40,7 @@
       'card-buttons': function(t, options) {
         return [{
           icon: 'https://cdn-icons-png.flaticon.com/512/32/32223.png', // Filter icon
-          text: 'Filter Board',
+          text: 'Reapply Filter',
           callback: function(t) {
             return t.board('id').then(function(boardId) {
               var filter = t.get('board', 'private', 'activeFilter', {});
