@@ -3,13 +3,13 @@ const t = window.TrelloPowerUp.iframe({
       appName: 'Saved Filters',
       appAuthor: 'GPT AddIns'
     });
-
 t.render(async () => {
   const lists = await t.lists('id', 'name');
   const statusSelect = document.getElementById('filter-status');
   statusSelect.innerHTML = '<option value="">Any</option>' + lists.map(list => `<option value="${list.id}">${list.name}</option>`).join('');
 
-  const members = await t.board('members');
+  const boardMembers = await t.board('members');
+  const members = boardMembers.members;
   const assigneeSelect = document.getElementById('filter-assignee');
   assigneeSelect.innerHTML = '<option value="">Any</option>' + members.map(member => `<option value="${member.id}">${member.fullName}</option>`).join('');
 
@@ -113,7 +113,7 @@ async function computeFilteredCardIds(t, filter) {
 
   const [listName, username] = await Promise.all([
     filter.status ? t.lists('id', 'name').then(lists => lists.find(l => l.id === filter.status)?.name) : null,
-    filter.assignee ? t.board('members').then(members => members.find(m => m.id === filter.assignee)?.username) : null
+    filter.assignee ? t.board('members').then(board => board.members.find(m => m.id === filter.assignee)?.username) : null
   ]);
 
   const queryParts = [];
