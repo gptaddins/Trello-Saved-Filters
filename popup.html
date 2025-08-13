@@ -25,6 +25,7 @@
   </select>
   <button id="apply-filter">Apply Filter</button>
   <button id="clear-filter">Clear Filter</button>
+  <button id="copy-filter-link">Copy Filter Link</button> <!-- New button -->
   <div>
     <input type="text" id="preset-name" placeholder="Preset name">
     <button id="save-preset">Save Preset</button>
@@ -32,7 +33,7 @@
   <h3>Saved Presets</h3>
   <ul id="presets-list"></ul>
   <div id="instructions">
-    This tool updates card badges to indicate filtered cards. To apply the filter on the board (e.g., hide non-matching cards), use Trello’s native filter icon (funnel) and manually set the same criteria (text, list, assignee) after applying the filter.
+    This tool updates card badges to indicate filtered cards. Click "Copy Filter Link" to get a URL with your filter criteria, then paste it into your browser to apply the filter on the board. Alternatively, use Trello’s native filter icon (funnel) manually.
   </div>
 
   <script>
@@ -80,7 +81,7 @@
               await t.set('board', 'private', 'savedFilters', data);
               await t.render(() => Promise.resolve([]));
               console.log('Filter applied, badges updated, closing popup...');
-              setTimeout(() => t.closePopup(), 1000); // Increased to 1000ms
+              setTimeout(() => t.closePopup(), 1000);
             } catch (error) {
               console.error('Error applying filter:', error);
             }
@@ -94,9 +95,32 @@
               await t.set('board', 'private', 'savedFilters', data);
               await t.render(() => Promise.resolve([]));
               console.log('Filter cleared, badges updated, closing popup...');
-              setTimeout(() => t.closePopup(), 1000); // Increased to 1000ms
+              setTimeout(() => t.closePopup(), 1000);
             } catch (error) {
               console.error('Error clearing filter:', error);
+            }
+          });
+
+          document.getElementById('copy-filter-link').addEventListener('click', async () => {
+            console.log('Generating filter link...');
+            const activeFilter = {
+              text: document.getElementById('filter-text').value,
+              status: document.getElementById('filter-status').value,
+              assignee: document.getElementById('filter-assignee').value
+            };
+            const board = await t.board('id');
+            let filterParams = '';
+            if (activeFilter.text) filterParams += `text:${encodeURIComponent(activeFilter.text)}`;
+            if (activeFilter.status) filterParams += (filterParams ? '&' : '') + `list:${activeFilter.status}`;
+            if (activeFilter.assignee) filterParams += (filterParams ? '&' : '') + `member:${activeFilter.assignee}`;
+            const filterUrl = `https://trello.com/b/${board.id}/?filter=${filterParams}`;
+            try {
+              await navigator.clipboard.writeText(filterUrl);
+              console.log('Filter link copied to clipboard:', filterUrl);
+              alert('Filter link copied to clipboard! Paste it into your browser to apply the filter.');
+            } catch (error) {
+              console.error('Error copying to clipboard:', error);
+              alert('Failed to copy filter link. Please copy manually: ' + filterUrl);
             }
           });
 
