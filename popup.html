@@ -1,28 +1,175 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Saved Filters</title>
+  <meta charset="UTF-8">
+  <title>Custom Filters</title>
   <script src="https://p.trellocdn.com/power-up.min.js"></script>
-  <script src="./popup.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; padding: 10px; }
-    label { display: block; margin-top: 10px; }
-    input, select { width: 100%; }
-    button { margin-top: 10px; }
-    ul { list-style: none; padding: 0; }
-    li { margin-bottom: 5px; }
-    li button { margin-left: 10px; }
+    body { margin: 0; padding: 10px; font-family: Arial, sans-serif; }
+    input, select { width: 100%; padding: 5px; margin-bottom: 10px; }
+    #save-preset { margin-top: 10px; }
+    #presets-list { list-style: none; padding: 0; }
+    li { margin: 5px 0; padding: 5px; border: 1px solid #ccc; }
+    .preset { cursor: pointer; color: blue; }
+    button { margin-left: 5px; }
+    #instructions { color: #666; font-size: 0.9em; margin-top: 10px; }
   </style>
 </head>
 <body>
-  <h3>Apply Filter</h3>
-  <label>Text:</label><input id="filter-text" type="text">
-  <label>Status (List):</label><select id="filter-status"></select>
-  <label>Assignee:</label><select id="filter-assignee"></select>
-  <button id="apply-filter">Apply</button>
-  <button id="clear-filter">Clear</button>
+  <input type="text" id="filter-text" placeholder="Search text (e.g., 'start')">
+  <select id="filter-status">
+    <option value="">Any List</option>
+  </select>
+  <select id="filter-assignee">
+    <option value="">Any Assignee</option>
+  </select>
+  <button id="apply-filter">Apply Filter</button>
+  <button id="clear-filter">Clear Filter</button>
+  <div>
+    <input type="text" id="preset-name" placeholder="Preset name">
+    <button id="save-preset">Save Preset</button>
+  </div>
   <h3>Saved Presets</h3>
   <ul id="presets-list"></ul>
-  <button id="save-preset">Save Current as Preset</button>
+  <div id="instructions">
+    Note: Apply the filter on the board using Trello’s native filter icon (funnel) after setting it here. Badges indicate matches.
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const appKey = "72d09526a2855680e12a04e38b04637c";
+      const appName = "Saved Filters";
+      const t = window.TrelloPowerUp.iframe({ appKey, appName });
+
+      t.render(async () => {
+        try {
+          // Populate status filter with board lists
+          const lists = await t.lists('id', 'name');
+          const statusSelect = document.getElementById('filter-status');
+          if (statusSelect) {
+            statusSelect.innerHTML = '<option value="">Any List</option>' + 
+              lists.map(list => `<option value="${list.id}">${list.name}</option>`).join('');
+          }
+
+          // Populate assignee filter with board members
+          const boardMembers = await t.board('members');
+          const members = boardMembers.members;
+          const assigneeSelect = document.getElementById('filter-assignee');
+          if (assigneeSelect) {
+            assigneeSelect.innerHTML = '<option value="">Any Assignee</option>' + 
+              members.map(member => `<option value="${member.id}">${member.fullName}</option>`).join('');
+          }
+
+          // Load saved filters
+          const data = await t.get('board', 'private', 'savedFilters', { presets: [], filteredCardIds: [], activeFilter: null });
+          updatePresetsList(data.presets);
+
+          // Apply active filter if present
+          if (data.activeFilter) {
+            document.getElementById('filter-text').value = data.activeFilter.text || '';
+            statusSelect.value = data.activeFilter.status || '';
+            assigneeSelect.value = data.activeFilter.assignee || '';
+          }
+
+          // Event listeners
+          document.getElementById('apply-filter').addEventListener('click', async () => {
+            const activeFilter = {
+              text: document.getElementById('filter-text').value,
+              status: document.getElementById('filter-status').value,
+              assignee: document.getElementById('filter-assignee').value
+            };
+            try {
+              const data = await t.get('board', 'private', 'savedFilters', { presets: [] });
+              data.activeFilter = activeFilter;
+              await t.set('board', 'private', 'savedFilters', data);
+              await t.render(() => Promise.resolve([])); // Trigger badge update
+              t.alert({ message: 'Filter applied! Check badges for matches.', duration: 10 });
+              // t.closePopup(); // Keep open for adjustments
+            } catch (error) {
+              console.error('Error applying filter:', error);
+              t.alert({ message: 'Failed to apply filter.', duration: 10 });
+            }
+          });
+
+          document.getElementById('clear-filter').addEventListener('click', async () => {
+            try {
+              const data = await t.get('board', 'private', 'savedFilters', { presets: [] });
+              data.activeFilter = null;
+              await t.set('board', 'private', 'savedFilters', data);
+              await t.render(() => Promise.resolve([])); // Clear badges
+              t.alert({ message: 'Filter cleared! All cards visible.', duration: 10 });
+              // t.closePopup(); // Keep open for adjustments
+            } catch (error) {
+              console.error('Error clearing filter:', error);
+              t.alert({ message: 'Failed to clear filter.', duration: 10 });
+            }
+          });
+
+          document.getElementById('save-preset').addEventListener('click', async () => {
+            const presetName = document.getElementById('preset-name').value.trim();
+            if (presetName) {
+              const preset = {
+                name: presetName,
+                text: document.getElementById('filter-text').value,
+                status: document.getElementById('filter-status').value,
+                assignee: document.getElementById('filter-assignee').value
+              };
+              try {
+                const data = await t.get('board', 'private', 'savedFilters', { presets: [] });
+                data.presets.push(preset);
+                await t.set('board', 'private', 'savedFilters', data);
+                updatePresetsList(data.presets);
+                document.getElementById('preset-name').value = '';
+                t.alert({ message: 'Preset saved!', duration: 5 });
+              } catch (error) {
+                console.error('Error saving preset:', error);
+                t.alert({ message: 'Failed to save preset.', duration: 5 });
+              }
+            }
+          });
+        } catch (error) {
+          console.error('Render error:', error);
+        }
+      });
+
+      function updatePresetsList(presets) {
+        const list = document.getElementById('presets-list');
+        if (list) {
+          list.innerHTML = '';
+          presets.forEach((preset, index) => {
+            const li = document.createElement('li');
+            li.textContent = preset.name;
+            const applyBtn = document.createElement('button');
+            applyBtn.textContent = 'Apply';
+            applyBtn.onclick = () => {
+              document.getElementById('filter-text').value = preset.text || '';
+              document.getElementById('filter-status').value = preset.status || '';
+              document.getElementById('filter-assignee').value = preset.assignee || '';
+              document.getElementById('apply-filter').click();
+            };
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = 'Delete';
+            deleteBtn.onclick = async () => {
+              try {
+                const data = await t.get('board', 'private', 'savedFilters');
+                data.presets.splice(index, 1);
+                await t.set('board', 'private', 'savedFilters', data);
+                updatePresetsList(data.presets);
+                t.alert({ message: 'Preset deleted!', duration: 5 });
+              } catch (error) {
+                console.error('Error deleting preset:', error);
+                t.alert({ message: 'Failed to delete preset.', duration: 5 });
+              }
+            };
+            li.append(applyBtn, deleteBtn);
+            list.appendChild(li);
+          });
+        }
+      }
+
+      // Removed computeFilteredCardIds, getFilterQuery, and applyClientSideFilter
+      // since they rely on unsupported methods or API calls that failed
+    });
+  </script>
 </body>
 </html>
