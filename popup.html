@@ -13,6 +13,7 @@
     .preset { cursor: pointer; color: blue; }
     button { margin-left: 5px; }
     #instructions { color: #666; font-size: 0.9em; margin-top: 10px; }
+    #close-btn { margin-top: 10px; }
   </style>
 </head>
 <body>
@@ -32,8 +33,9 @@
   <h3>Saved Presets</h3>
   <ul id="presets-list"></ul>
   <div id="instructions">
-    Note: This tool sets a filter that updates card badges. To apply the filter on the board (e.g., hide non-matching cards), use Trello’s native filter icon (funnel) and manually select the options set here. Click 'Apply Filter' to update badges, then adjust the native filter as needed.
+    This tool updates card badges to indicate filtered cards. To apply the filter on the board (e.g., hide non-matching cards), use Trello’s native filter icon (funnel) and manually set the same criteria (text, list, assignee) after clicking 'Apply Filter'. The popup will stay open for adjustments.
   </div>
+  <button id="close-btn">Close</button>
 
   <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -84,7 +86,7 @@
               await t.set('board', 'private', 'savedFilters', data);
               await t.render(() => Promise.resolve([])); // Trigger badge update
               t.alert({ message: 'Filter applied! Badges updated. Use the native filter (funnel) to hide non-matching cards.', duration: 10 });
-              // Keep popup open for adjustments
+              // Popup remains open
             } catch (error) {
               console.error('Error applying filter:', error);
               t.alert({ message: 'Failed to apply filter.', duration: 10 });
@@ -98,7 +100,7 @@
               await t.set('board', 'private', 'savedFilters', data);
               await t.render(() => Promise.resolve([])); // Clear badges
               t.alert({ message: 'Filter cleared! All cards visible.', duration: 10 });
-              // Keep popup open for adjustments
+              // Popup remains open
             } catch (error) {
               console.error('Error clearing filter:', error);
               t.alert({ message: 'Failed to clear filter.', duration: 10 });
@@ -126,6 +128,11 @@
                 t.alert({ message: 'Failed to save preset.', duration: 5 });
               }
             }
+          });
+
+          // Add close button functionality
+          document.getElementById('close-btn').addEventListener('click', () => {
+            t.closePopup();
           });
         } catch (error) {
           console.error('Render error:', error);
