@@ -75,6 +75,7 @@
 
           // Event listeners
           document.getElementById('apply-filter').addEventListener('click', async () => {
+            console.log('Applying filter...');
             const activeFilter = {
               text: document.getElementById('filter-text').value,
               status: document.getElementById('filter-status').value,
@@ -85,29 +86,29 @@
               data.activeFilter = activeFilter;
               await t.set('board', 'private', 'savedFilters', data);
               await t.render(() => Promise.resolve([])); // Trigger badge update
-              t.alert({ message: 'Filter applied! Badges updated. Use the native filter (funnel) to hide non-matching cards.', duration: 10 });
-              // Popup remains open
+              console.log('Filter applied, badges updated.');
+              // No t.alert() or t.closePopup() to keep open
             } catch (error) {
               console.error('Error applying filter:', error);
-              t.alert({ message: 'Failed to apply filter.', duration: 10 });
             }
           });
 
           document.getElementById('clear-filter').addEventListener('click', async () => {
+            console.log('Clearing filter...');
             try {
               const data = await t.get('board', 'private', 'savedFilters', { presets: [] });
               data.activeFilter = null;
               await t.set('board', 'private', 'savedFilters', data);
               await t.render(() => Promise.resolve([])); // Clear badges
-              t.alert({ message: 'Filter cleared! All cards visible.', duration: 10 });
-              // Popup remains open
+              console.log('Filter cleared, badges updated.');
+              // No t.alert() or t.closePopup() to keep open
             } catch (error) {
               console.error('Error clearing filter:', error);
-              t.alert({ message: 'Failed to clear filter.', duration: 10 });
             }
           });
 
           document.getElementById('save-preset').addEventListener('click', async () => {
+            console.log('Saving preset...');
             const presetName = document.getElementById('preset-name').value.trim();
             if (presetName) {
               const preset = {
@@ -122,16 +123,16 @@
                 await t.set('board', 'private', 'savedFilters', data);
                 updatePresetsList(data.presets);
                 document.getElementById('preset-name').value = '';
-                t.alert({ message: 'Preset saved!', duration: 5 });
+                console.log('Preset saved.');
               } catch (error) {
                 console.error('Error saving preset:', error);
-                t.alert({ message: 'Failed to save preset.', duration: 5 });
               }
             }
           });
 
           // Add close button functionality
           document.getElementById('close-btn').addEventListener('click', () => {
+            console.log('Closing popup...');
             t.closePopup();
           });
         } catch (error) {
@@ -162,10 +163,9 @@
                 data.presets.splice(index, 1);
                 await t.set('board', 'private', 'savedFilters', data);
                 updatePresetsList(data.presets);
-                t.alert({ message: 'Preset deleted!', duration: 5 });
+                console.log('Preset deleted.');
               } catch (error) {
                 console.error('Error deleting preset:', error);
-                t.alert({ message: 'Failed to delete preset.', duration: 5 });
               }
             };
             li.append(applyBtn, deleteBtn);
