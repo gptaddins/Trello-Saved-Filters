@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Custom Filters</title>
+  <script src="https://api.trello.com/1/client.js?key=72d09526a2855680e12a04e38b04637c"></script>
   <script src="https://p.trellocdn.com/power-up.min.js"></script>
   <style>
     body { margin: 0; padding: 10px; font-family: Arial, sans-serif; }
@@ -43,7 +44,6 @@
 
       t.render(async () => {
         try {
-          // Populate status filter with board lists
           const lists = await t.lists('id', 'name');
           const statusSelect = document.getElementById('filter-status');
           if (statusSelect) {
@@ -51,7 +51,6 @@
               lists.map(list => `<option value="${list.id}">${list.name}</option>`).join('');
           }
 
-          // Populate assignee filter with board members
           const boardMembers = await t.board('members');
           const members = boardMembers.members;
           const assigneeSelect = document.getElementById('filter-assignee');
@@ -60,18 +59,15 @@
               members.map(member => `<option value="${member.id}">${member.fullName}</option>`).join('');
           }
 
-          // Load saved filters
           const data = await t.get('board', 'private', 'savedFilters', { presets: [], filteredCardIds: [], activeFilter: null });
           updatePresetsList(data.presets);
 
-          // Apply active filter if present
           if (data.activeFilter) {
             document.getElementById('filter-text').value = data.activeFilter.text || '';
             statusSelect.value = data.activeFilter.status || '';
             assigneeSelect.value = data.activeFilter.assignee || '';
           }
 
-          // Event listeners
           document.getElementById('apply-filter').addEventListener('click', async () => {
             console.log('Applying filter...');
             const activeFilter = {
@@ -83,9 +79,13 @@
               const data = await t.get('board', 'private', 'savedFilters', { presets: [] });
               data.activeFilter = activeFilter;
               await t.set('board', 'private', 'savedFilters', data);
-              await t.render(() => Promise.resolve([])); // Trigger badge update
-              console.log('Filter applied, badges updated.');
-              t.closePopup(); // Controlled redirect back to board
+              await t.render(() => Promise.resolve([]));
+              console.log('Filter applied, badges updated, closing popup...');
+              setTimeout(() => {
+                t.closePopup();
+                // Fallback: Try forcing closure with a message
+                window.parent.postMessage('close', '*');
+              }, 500);
             } catch (error) {
               console.error('Error applying filter:', error);
             }
@@ -97,9 +97,12 @@
               const data = await t.get('board', 'private', 'savedFilters', { presets: [] });
               data.activeFilter = null;
               await t.set('board', 'private', 'savedFilters', data);
-              await t.render(() => Promise.resolve([])); // Clear badges
-              console.log('Filter cleared, badges updated.');
-              t.closePopup(); // Controlled redirect back to board
+              await t.render(() => Promise.resolve([]));
+              console.log('Filter cleared, badges updated, closing popup...');
+              setTimeout(() => {
+                t.closePopup();
+                window.parent.postMessage('close', '*');
+              }, 500);
             } catch (error) {
               console.error('Error clearing filter:', error);
             }
