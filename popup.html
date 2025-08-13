@@ -32,7 +32,7 @@
   <h3>Saved Presets</h3>
   <ul id="presets-list"></ul>
   <div id="instructions">
-    Note: Apply the filter on the board using Trello’s native filter icon (funnel) after setting it here. Badges indicate matches.
+    Note: This tool sets a filter that updates card badges. To apply the filter on the board (e.g., hide non-matching cards), use Trello’s native filter icon (funnel) and manually select the options set here. Click 'Apply Filter' to update badges, then adjust the native filter as needed.
   </div>
 
   <script>
@@ -83,8 +83,8 @@
               data.activeFilter = activeFilter;
               await t.set('board', 'private', 'savedFilters', data);
               await t.render(() => Promise.resolve([])); // Trigger badge update
-              t.alert({ message: 'Filter applied! Check badges for matches.', duration: 10 });
-              // t.closePopup(); // Keep open for adjustments
+              t.alert({ message: 'Filter applied! Badges updated. Use the native filter (funnel) to hide non-matching cards.', duration: 10 });
+              // Keep popup open for adjustments
             } catch (error) {
               console.error('Error applying filter:', error);
               t.alert({ message: 'Failed to apply filter.', duration: 10 });
@@ -98,7 +98,7 @@
               await t.set('board', 'private', 'savedFilters', data);
               await t.render(() => Promise.resolve([])); // Clear badges
               t.alert({ message: 'Filter cleared! All cards visible.', duration: 10 });
-              // t.closePopup(); // Keep open for adjustments
+              // Keep popup open for adjustments
             } catch (error) {
               console.error('Error clearing filter:', error);
               t.alert({ message: 'Failed to clear filter.', duration: 10 });
@@ -166,9 +166,6 @@
           });
         }
       }
-
-      // Removed computeFilteredCardIds, getFilterQuery, and applyClientSideFilter
-      // since they rely on unsupported methods or API calls that failed
     });
   </script>
 </body>
