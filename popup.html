@@ -13,7 +13,6 @@
     .preset { cursor: pointer; color: blue; }
     button { margin-left: 5px; }
     #instructions { color: #666; font-size: 0.9em; margin-top: 10px; }
-    #close-btn { margin-top: 10px; }
   </style>
 </head>
 <body>
@@ -33,9 +32,8 @@
   <h3>Saved Presets</h3>
   <ul id="presets-list"></ul>
   <div id="instructions">
-    This tool updates card badges to indicate filtered cards. To apply the filter on the board (e.g., hide non-matching cards), use Trello’s native filter icon (funnel) and manually set the same criteria (text, list, assignee) after clicking 'Apply Filter'. The popup will stay open for adjustments.
+    This tool updates card badges to indicate filtered cards. To apply the filter on the board (e.g., hide non-matching cards), use Trello’s native filter icon (funnel) and manually set the same criteria (text, list, assignee) after applying the filter.
   </div>
-  <button id="close-btn">Close</button>
 
   <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -87,7 +85,7 @@
               await t.set('board', 'private', 'savedFilters', data);
               await t.render(() => Promise.resolve([])); // Trigger badge update
               console.log('Filter applied, badges updated.');
-              // No t.alert() or t.closePopup() to keep open
+              t.closePopup(); // Controlled redirect back to board
             } catch (error) {
               console.error('Error applying filter:', error);
             }
@@ -101,7 +99,7 @@
               await t.set('board', 'private', 'savedFilters', data);
               await t.render(() => Promise.resolve([])); // Clear badges
               console.log('Filter cleared, badges updated.');
-              // No t.alert() or t.closePopup() to keep open
+              t.closePopup(); // Controlled redirect back to board
             } catch (error) {
               console.error('Error clearing filter:', error);
             }
@@ -128,12 +126,6 @@
                 console.error('Error saving preset:', error);
               }
             }
-          });
-
-          // Add close button functionality
-          document.getElementById('close-btn').addEventListener('click', () => {
-            console.log('Closing popup...');
-            t.closePopup();
           });
         } catch (error) {
           console.error('Render error:', error);
