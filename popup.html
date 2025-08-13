@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <title>Custom Filters</title>
-  <script src="https://api.trello.com/1/client.js?key=72d09526a2855680e12a04e38b04637c"></script>
   <script src="https://p.trellocdn.com/power-up.min.js"></script>
   <style>
     body { margin: 0; padding: 10px; font-family: Arial, sans-serif; }
@@ -81,11 +80,7 @@
               await t.set('board', 'private', 'savedFilters', data);
               await t.render(() => Promise.resolve([]));
               console.log('Filter applied, badges updated, closing popup...');
-              setTimeout(() => {
-                t.closePopup();
-                // Fallback: Try forcing closure with a message
-                window.parent.postMessage('close', '*');
-              }, 500);
+              setTimeout(() => t.closePopup(), 1000); // Increased to 1000ms
             } catch (error) {
               console.error('Error applying filter:', error);
             }
@@ -99,10 +94,7 @@
               await t.set('board', 'private', 'savedFilters', data);
               await t.render(() => Promise.resolve([]));
               console.log('Filter cleared, badges updated, closing popup...');
-              setTimeout(() => {
-                t.closePopup();
-                window.parent.postMessage('close', '*');
-              }, 500);
+              setTimeout(() => t.closePopup(), 1000); // Increased to 1000ms
             } catch (error) {
               console.error('Error clearing filter:', error);
             }
