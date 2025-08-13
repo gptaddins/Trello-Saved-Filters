@@ -1,8 +1,56 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
+  <title>Saved Filters Power-Up</title>
   <script src="https://p.trellocdn.com/power-up.min.js"></script>
-  <script src="./connector.js"></script>
 </head>
-<body></body>
+<body>
+  <script>
+    const appKey = "72d09526a2855680e12a04e38b04637c";
+    const appName = "Saved Filters";
+
+    window.TrelloPowerUp.initialize({
+      'board-buttons': function(t, options) {
+        return [{
+          icon: 'https://avatars.githubusercontent.com/u/224228586',
+          text: 'Filters',
+          callback: function(t) {
+            return t.popup({
+              title: 'Custom Filters',
+              url: './popup.html',
+              height: 500
+            });
+          }
+        }];
+      },
+      'card-badges': function(t, options) {
+        return t.card('all').then(function(card) {
+          return t.get('board', 'private', 'savedFilters', {}).then(function(data) {
+            const filter = data.activeFilter || {};
+            const matches = matchesFilter(card, filter);
+            return matches ? [{
+              text: '✓ Filtered',
+              color: 'green'
+            }] : [{
+              text: '✗ Not Filtered',
+              color: 'gray'
+            }];
+          });
+        });
+      }
+    }, {
+      appKey,
+      appName,
+      appAuthor: 'GPT AddIns'
+    });
+
+    function matchesFilter(card, filter) {
+      const textMatch = !filter.text || (card.name && card.name.toLowerCase().includes(filter.text.toLowerCase()));
+      const statusMatch = !filter.status || (card.idList && filter.status === card.idList);
+      const assigneeMatch = !filter.assignee || (card.idMembers && card.idMembers.includes(filter.assignee));
+      return textMatch && statusMatch && assigneeMatch;
+    }
+  </script>
+</body>
 </html>
